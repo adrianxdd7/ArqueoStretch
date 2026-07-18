@@ -1,0 +1,2592 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>ArqueoStretch</title>
+    <style>
+        /* Asegurar cálculo uniforme del modelo de caja en todo el documento */
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-main: #09090b;
+            --bg-card: #141416;
+            --border: #27272a;
+            --text-main: #f4f4f5;
+            --text-muted: #a1a1aa;
+            --accent: #2563eb;
+            --accent-hover: #1d4ed8;
+            --success: #16a34a;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            margin: 0;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        button, .panel, .controls-card, .histogram-container, .viewer-card, select, input, textarea, .image-workshop-card {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        button {
+            touch-action: manipulation;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        header { text-align: center; }
+        header h1 { font-size: 1.8rem; margin: 0 0 4px 0; font-weight: 700; }
+        header p { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
+
+        /* Control de Pantalla Limpia */
+        body.clean-screen header,
+        body.clean-screen .controls-card,
+        body.clean-screen #wrapperSimple.hidden ~ .pro-card,
+        body.clean-screen .histogram-container,
+        body.clean-screen .tabs-wrapper,
+        body.clean-screen #manualPanel,
+        body.clean-screen #toggleManualBtn,
+        body.clean-screen .image-group-buttons,
+        body.clean-screen .telemetry-panel {
+            display: none !important;
+        }
+
+        body.clean-screen .image-workshop-card {
+            border: none !important;
+            background: transparent !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+        }
+
+        body.clean-screen .viewer-card {
+            aspect-ratio: auto;
+            flex-grow: 1;
+            height: calc(100vh - 80px);
+        }
+
+        .clean-bar {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 10px;
+            box-sizing: border-box;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        body.clean-screen .clean-bar {
+            display: flex !important;
+            position: fixed;
+            bottom: 12px;
+            z-index: 9999;
+        }
+
+        .tabs-wrapper {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: #18181b;
+            padding: 4px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 10px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border-radius: 7px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tab-btn.active {
+            background: var(--bg-card);
+            color: var(--text-main);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+            border: 1px solid var(--border);
+        }
+
+        /* Tarjeta Taller del Visor de Imagen */
+        .image-workshop-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        .viewer-card {
+            background: #000;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+            width: 100%;
+            aspect-ratio: 4/3;
+            box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+        }
+
+        .viewer-card video, #canvasView {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            object-fit: contain;
+        }
+
+        .hidden { display: none !important; }
+
+        .histogram-container {
+            background: #0b0b0c;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            box-sizing: border-box;
+            width: 100%;
+        }
+
+        #histogramCanvas {
+            width: 100%;
+            height: 100px;
+            background: #101012;
+            border-radius: 4px;
+            display: block;
+        }
+
+        .levels-sliders {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .level-row {
+            display: grid;
+            grid-template-columns: 90px 1fr 40px;
+            align-items: center;
+            font-size: 0.75rem;
+            font-family: monospace;
+        }
+
+        .controls-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .control-group { display: flex; flex-direction: column; gap: 6px; }
+        label.setting-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
+        
+        select, button, input[type="text"], input[type="range"], textarea {
+            font-family: inherit; background: #1e1e20; color: var(--text-main);
+            border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 0.88rem;
+        }
+
+        textarea { font-family: monospace; resize: none; font-size: 0.8rem; }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        button.btn-primary { background: var(--accent); color: #fff; border: none; font-weight: 600; cursor: pointer; }
+        button.btn-primary:hover { background: var(--accent-hover); }
+        button.btn-success { background: var(--success); color: #fff; border: none; font-weight: 600; cursor: pointer; }
+        button.btn-danger { background: var(--danger); color: #fff; border: none; font-weight: 600; cursor: pointer; }
+        button.btn-danger:hover { background: var(--danger-hover); }
+        
+        .btn-hold-view {
+            background: #27272a; color: #ffffff; border: 1px solid #3f3f46;
+            font-weight: 700; cursor: pointer; padding: 14px; font-size: 0.9rem;
+            letter-spacing: 0.5px; border-radius: 8px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+            width: 100%; box-sizing: border-box; text-align: center;
+        }
+        .btn-hold-view:active { background: #18181b; }
+
+        .telemetry-panel {
+            background: #09090b; border: 1px solid var(--border); border-radius: 8px;
+            padding: 12px; font-family: monospace; font-size: 0.75rem; color: #2563eb;
+            display: flex; flex-direction: column; gap: 4px;
+        }
+        .telemetry-row { display: flex; justify-content: space-between; }
+        .telemetry-row span:last-child { color: var(--text-main); }
+
+        .fav-row { display: flex; gap: 8px; align-items: center; }
+        .fav-row select { flex-grow: 1; }
+        .metadata-box {
+            font-family: monospace; font-size: 0.7rem; background: #09090b;
+            padding: 6px; border-radius: 6px; border: 1px solid var(--border);
+            color: var(--text-muted); word-break: break-all;
+        }
+
+        .manual-card {
+            background: #101012; border: 1px solid var(--border); border-radius: 8px; padding: 10px;
+        }
+        .manual-header { font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase; }
+
+        /* Enrutamiento condicional visual por CSS puro para mantener sincronía perfecta con JS */
+        .pro-card { display: none; }
+        .pro-only { display: none !important; }
+        .simple-only { display: block !important; }
+
+        #wrapperSimple.hidden ~ .pro-card { display: flex !important; }
+        #wrapperSimple.hidden ~ #configLibraryCard .pro-only { display: block !important; }
+        #wrapperSimple.hidden ~ #configLibraryCard .simple-only { display: none !important; }
+
+        /* ====================================================
+           OPTIMIZACIÓN EXCLUSIVA PARA DISPOSITIVOS MÓVILES
+           ==================================================== */
+        @media (max-width: 600px) {
+            body {
+                padding: 8px;
+                overflow-x: hidden;
+            }
+
+            .container {
+                gap: 10px;
+            }
+
+            header h1 {
+                font-size: 1.45rem;
+            }
+
+            /* Forzar comportamiento mono-columna en las rejillas de botones */
+            .grid-2 {
+                grid-template-columns: 1fr !important;
+                gap: 8px;
+            }
+
+            /* Prevenir el colapso horizontal en filas de presets locales */
+            .fav-row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 6px;
+            }
+
+            .fav-row select, 
+            .fav-row button {
+                width: 100% !important;
+            }
+
+            /* Corrección del escalado excesivo por padding en deslizadores nativos (iOS/Android) */
+            input[type="range"] {
+                padding: 8px 4px !important;
+                width: 100% !important;
+            }
+
+            /* Re-mapeo responsivo del panel técnico de niveles (Punto negro, gamma, blanco) */
+            .level-row {
+                display: flex !important;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                align-items: center;
+                gap: 4px;
+                padding: 8px 0;
+                border-bottom: 1px dashed var(--border);
+            }
+
+            .level-row span:first-child {
+                font-weight: 600;
+                font-size: 0.78rem;
+            }
+
+            .level-row input[type="range"] {
+                order: 3; /* Envía de forma segura el slider a una línea inferior completa */
+                margin-top: 6px;
+            }
+
+            .level-row span:last-child {
+                background: #18181b;
+                padding: 2px 6px;
+                border-radius: 4px;
+            }
+
+            /* Adaptación geométrica flotante de la barra en Modo Pantalla Limpia */
+            body.clean-screen .clean-bar {
+                position: fixed;
+                left: 8px;
+                right: 8px;
+                width: calc(100% - 16px) !important;
+                bottom: 8px;
+                flex-direction: row; /* Forzar fila en lugar de columna en dispositivos móviles */
+                gap: 6px;
+                padding: 8px;
+            }
+
+            body.clean-screen .clean-bar button {
+                flex: 1; /* Distribución proporcional equitativa */
+                width: auto !important;
+                padding: 10px 4px !important;
+                font-size: 0.75rem !important; /* Ajuste métrico para evitar desbordes */
+            }
+
+            body.clean-screen .viewer-card {
+                height: calc(100vh - 90px); /* Maximiza el viewport analítico de la imagen con barra horizontal */
+            }
+        }
+    
+        /* ============================================================
+           MÓDULO: INTERACCIÓN GESTUAL + AJUSTE ENFOCADO (B+C)
+           ============================================================ */
+
+        .gesture-layer {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 10;
+            touch-action: none;
+            cursor: grab;
+        }
+        .gesture-layer:active { cursor: grabbing; }
+
+        .gesture-badge {
+            position: absolute;
+            top: 12px; left: 12px;
+            background: rgba(0,0,0,0.75);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 6px 12px;
+            border-radius: 8px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease-out;
+            z-index: 20;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            font-variant-numeric: tabular-nums;
+            backdrop-filter: blur(4px);
+        }
+
+        .gesture-hint {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #fff;
+            font-size: 11px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            pointer-events: none;
+            text-align: center;
+            line-height: 1.4;
+            opacity: 1;
+            transition: opacity 0.4s ease-out;
+            z-index: 20;
+        }
+
+        /* Modo Precisión (C): overlay sobre la imagen */
+        .precision-overlay {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(9,9,11,0.92);
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            padding: 16px;
+            gap: 12px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease-out;
+        }
+        .precision-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .precision-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .precision-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .precision-close {
+            background: #27272a;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            width: 32px; height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .precision-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .precision-chip {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #1e1e20;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-family: inherit;
+        }
+        .precision-chip.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        .precision-slider-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .precision-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .precision-label {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+
+        .precision-value {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-main);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .precision-slider {
+            width: 100%;
+            height: 40px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+        }
+        .precision-slider::-webkit-slider-runnable-track {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+        }
+        .precision-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 22px; height: 22px;
+            background: var(--text-main);
+            border-radius: 50%;
+            margin-top: -9px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+        .precision-slider::-moz-range-track {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+        }
+        .precision-slider::-moz-range-thumb {
+            width: 22px; height: 22px;
+            background: var(--text-main);
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+        }
+
+        /* Bottom sheet mejorado (A) */
+        .bottom-sheet {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: var(--bg-card);
+            border-radius: 16px 16px 0 0;
+            padding: 12px 16px 20px;
+            box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+            z-index: 15;
+            transition: transform 0.3s ease-out;
+        }
+        .bottom-sheet.collapsed {
+            transform: translateY(calc(100% - 48px));
+        }
+        .bottom-sheet-handle {
+            width: 36px; height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            margin: 0 auto 12px;
+            cursor: pointer;
+        }
+
+        .sheet-preset-scroll {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .sheet-preset-scroll::-webkit-scrollbar { display: none; }
+
+        .sheet-preset-btn {
+            flex-shrink: 0;
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #1e1e20;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            font-family: inherit;
+        }
+        .sheet-preset-btn:active {
+            background: #27272a;
+        }
+
+        .sheet-action-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .sheet-action-btn {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: #1e1e20;
+            color: var(--text-main);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .sheet-action-btn.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        /* Indicador de modo activo en la imagen */
+        .mode-indicator {
+            position: absolute;
+            top: 12px; right: 12px;
+            background: rgba(0,0,0,0.6);
+            color: var(--text-muted);
+            font-size: 10px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            pointer-events: none;
+            z-index: 5;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Animación de pulso para el hint */
+        @keyframes pulse-hint {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .gesture-hint.pulsing {
+            animation: pulse-hint 2s ease-in-out infinite;
+        }
+
+        /* En desktop, ocultar capa gestual y mostrar controles normales */
+        @media (min-width: 601px) {
+            .gesture-layer, .gesture-badge, .gesture-hint, .bottom-sheet, .mode-indicator {
+                display: none !important;
+            }
+            .precision-overlay { display: none !important; }
+        }
+        @media (max-width: 600px) {
+            #holdViewBtn { display: none !important; }
+            .image-group-buttons .grid-2 { display: none !important; }
+        }
+
+    
+        /* ============================================================
+           MÓDULO: MODO SIMPLE MÓVIL — DISEÑO TIPO DS STRETCH
+           ============================================================ */
+
+        /* Barra inferior fija del modo simple */
+        .mobile-simple-bar {
+            display: none;
+        }
+
+        /* Presets rápidos tipo DS Stretch */
+        .mobile-presets-strip {
+            display: none;
+        }
+
+        /* Bottom sheet de exportación */
+        .export-sheet {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: var(--bg-card);
+            border-radius: 20px 20px 0 0;
+            padding: 16px 20px 28px;
+            box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
+            z-index: 100;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        .export-sheet.active {
+            transform: translateY(0);
+        }
+        .export-sheet-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            z-index: 99;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .export-sheet-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        .export-sheet-handle {
+            width: 40px; height: 5px;
+            background: var(--border);
+            border-radius: 3px;
+            margin: 0 auto 16px;
+        }
+        .export-sheet-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .export-option-group {
+            margin-bottom: 16px;
+        }
+        .export-option-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 8px;
+            display: block;
+        }
+        .export-option-select {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #1e1e20;
+            color: var(--text-main);
+            font-size: 15px;
+            font-family: inherit;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+        }
+        .export-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .export-toggle-row:last-child {
+            border-bottom: none;
+        }
+        .export-toggle-text {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text-main);
+        }
+        .export-toggle-sub {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: block;
+            margin-top: 2px;
+        }
+        /* Toggle switch */
+        .toggle-switch {
+            width: 48px;
+            height: 28px;
+            background: #3f3f46;
+            border-radius: 14px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            flex-shrink: 0;
+        }
+        .toggle-switch.active {
+            background: var(--accent);
+        }
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            width: 24px; height: 24px;
+            background: #fff;
+            border-radius: 50%;
+            top: 2px; left: 2px;
+            transition: transform 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        .toggle-switch.active::after {
+            transform: translateX(20px);
+        }
+        .export-btn-main {
+            width: 100%;
+            padding: 16px;
+            border-radius: 12px;
+            border: none;
+            background: var(--success);
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 8px;
+            font-family: inherit;
+        }
+        .export-btn-main:active {
+            opacity: 0.85;
+        }
+        .export-project-input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: #1e1e20;
+            color: var(--text-main);
+            font-size: 15px;
+            font-family: inherit;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        /* Solo en móvil */
+        @media (max-width: 600px) {
+            /* Ocultar controles del modo simple desktop */
+            body:not(.lab-mode) #wrapperSimple,
+            body:not(.lab-mode) #exportZone,
+            body:not(.lab-mode) #configLibraryCard,
+            body:not(.lab-mode) #histogramUI,
+            body:not(.lab-mode) #toggleManualBtn,
+            body:not(.lab-mode) #manualPanel,
+            body:not(.lab-mode) .telemetry-panel {
+                display: none !important;
+            }
+
+            /* Mostrar barra inferior del modo simple */
+            body:not(.lab-mode) .mobile-simple-bar {
+                display: flex !important;
+            }
+            body:not(.lab-mode) .mobile-presets-strip {
+                display: flex !important;
+            }
+
+            /* Ajustar viewer para modo simple */
+            body:not(.lab-mode) .viewer-card {
+                aspect-ratio: auto;
+                flex: 1;
+                min-height: 0;
+            }
+            body:not(.lab-mode) .image-workshop-card {
+                flex: 1;
+                min-height: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 0;
+                padding: 0;
+                border: none;
+                background: transparent;
+            }
+            body:not(.lab-mode) #mainContainer {
+                gap: 0;
+                height: 100vh;
+                padding: 0;
+            }
+            body:not(.lab-mode) header {
+                display: none !important;
+            }
+            body:not(.lab-mode) .tabs-wrapper {
+                display: none !important;
+            }
+            body:not(.lab-mode) body {
+                padding: 0;
+            }
+
+            /* Barra inferior fija */
+            .mobile-simple-bar {
+                position: fixed;
+                bottom: 0; left: 0; right: 0;
+                background: var(--bg-card);
+                border-top: 1px solid var(--border);
+                padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+                display: none;
+                justify-content: space-between;
+                align-items: center;
+                gap: 12px;
+                z-index: 50;
+            }
+            .mobile-simple-bar .bar-btn {
+                padding: 12px 20px;
+                border-radius: 10px;
+                border: 1px solid var(--border);
+                background: #1e1e20;
+                color: var(--text-main);
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+                font-family: inherit;
+                flex: 1;
+                text-align: center;
+            }
+            .mobile-simple-bar .bar-btn.primary {
+                background: var(--accent);
+                color: #fff;
+                border-color: var(--accent);
+            }
+            .mobile-simple-bar .bar-btn.success {
+                background: var(--success);
+                color: #fff;
+                border-color: var(--success);
+            }
+
+            /* Strip de presets */
+            .mobile-presets-strip {
+                display: none;
+                padding: 12px 16px 16px;
+                gap: 10px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+                background: var(--bg-card);
+                border-top: 1px solid var(--border);
+            }
+            .mobile-presets-strip::-webkit-scrollbar {
+                display: none;
+            }
+            .mobile-preset-btn {
+                flex-shrink: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 6px;
+                padding: 12px 16px;
+                min-width: 72px;
+                border-radius: 14px;
+                border: 1px solid var(--border);
+                background: #1e1e20;
+                color: var(--text-main);
+                font-size: 11px;
+                font-weight: 600;
+                cursor: pointer;
+                font-family: inherit;
+                transition: all 0.15s ease;
+            }
+            .mobile-preset-btn:active {
+                background: #27272a;
+                transform: scale(0.96);
+            }
+            .mobile-preset-btn.active {
+                background: var(--accent);
+                border-color: var(--accent);
+                color: #fff;
+            }
+            .mobile-preset-btn .preset-emoji {
+                font-size: 24px;
+                line-height: 1;
+            }
+
+            /* Ocultar cosas del modo profesional en modo simple */
+            body:not(.lab-mode) .bottom-sheet {
+                display: none !important;
+            }
+            body:not(.lab-mode) .gesture-hint {
+                bottom: 140px !important;
+            }
+        }
+
+        /* Modo profesional móvil: mostrar B+C+A */
+        @media (max-width: 600px) {
+            body.lab-mode .mobile-simple-bar,
+            body.lab-mode .mobile-presets-strip {
+                display: none !important;
+            }
+            body.lab-mode #wrapperSimple {
+                display: none !important;
+            }
+        }
+
+    
+        /* Clean screen en móvil: ocultar todo */
+        @media (max-width: 600px) {
+            body.clean-screen .mobile-simple-bar,
+            body.clean-screen .mobile-presets-strip,
+            body.clean-screen .bottom-sheet {
+                display: none !important;
+            }
+            body.clean-screen .viewer-card {
+                height: 100vh !important;
+            }
+            body.clean-screen .image-workshop-card {
+                height: 100vh !important;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container" id="mainContainer">
+        <header>
+            <h1>ArqueoStretch</h1>
+            <p>Herramienta modular para el realce y análisis de pinturas rupestres</p>
+        </header>
+
+        <div class="tabs-wrapper">
+            <button class="tab-btn active" id="tabSimple">🪨 Modo simple</button>
+            <button class="tab-btn" id="tabProfesional">🔬 Modo profesional</button>
+        </div>
+
+        <div class="image-workshop-card" id="imageWorkshopCard">
+            <div class="viewer-card" id="viewerCard">
+                <video id="videoPreview" autoplay playsinline muted></video>
+                <canvas id="canvasView" class="hidden"></canvas>
+
+                <!-- Capa gestual (B) -->
+                <div id="gestureLayer" class="gesture-layer hidden"></div>
+
+                <!-- Badge de valor flotante -->
+                <div id="gestureBadge" class="gesture-badge">Intensidad: 70</div>
+
+                <!-- Hint inicial -->
+                <div id="gestureHint" class="gesture-hint pulsing">
+                    ← desliza horizontal → intensidad<br>
+                    doble-tap para precisión
+                </div>
+
+                <!-- Indicador de modo -->
+                <div id="modeIndicator" class="mode-indicator">PCA RGB · Intensidad 70</div>
+
+                <!-- Modo Precisión (C) -->
+                <div id="precisionOverlay" class="precision-overlay">
+                    <div class="precision-header">
+                        <span class="precision-title">Ajuste preciso</span>
+                        <button class="precision-close" onclick="exitPrecisionMode()">✕</button>
+                    </div>
+                    <div class="precision-chips" id="precisionChips">
+                        <button class="precision-chip active" data-param="intensity" onclick="selectPrecisionParam('intensity')">Intensidad</button>
+                        <button class="precision-chip" data-param="black" onclick="selectPrecisionParam('black')">Negro</button>
+                        <button class="precision-chip" data-param="gamma" onclick="selectPrecisionParam('gamma')">Gamma</button>
+                        <button class="precision-chip" data-param="white" onclick="selectPrecisionParam('white')">Blanco</button>
+                    </div>
+                    <div class="precision-slider-area">
+                        <div class="precision-label-row">
+                            <span class="precision-label" id="precisionLabel">Intensidad del estiramiento</span>
+                            <span class="precision-value" id="precisionValue">70</span>
+                        </div>
+                        <input type="range" class="precision-slider" id="precisionSlider" 
+                               min="5" max="250" value="70" 
+                               oninput="onPrecisionInput(this.value)">
+                    </div>
+                </div>
+
+                <!-- Bottom Sheet (A) -->
+                <div id="bottomSheet" class="bottom-sheet">
+                    <div class="bottom-sheet-handle" onclick="toggleSheet()"></div>
+                    <div class="sheet-preset-scroll">
+                        <button class="sheet-preset-btn" onclick="quickPreset('pigmento_rojo')">🎨 Rojo</button>
+                        <button class="sheet-preset-btn" onclick="quickPreset('rojo_degradado')">🦬 Rojo deg.</button>
+                        <button class="sheet-preset-btn" onclick="quickPreset('blanco')">⚪ Blanco</button>
+                        <button class="sheet-preset-btn" onclick="quickPreset('carbon')">⚫ Carbón</button>
+                        <button class="sheet-preset-btn" onclick="quickPreset('grabados')">🟤 Grabados</button>
+                        <button class="sheet-preset-btn" onclick="quickPreset('erosionada')">🌧 Erosión</button>
+                    </div>
+                    <div class="sheet-action-row">
+                        <button class="sheet-action-btn" id="sheetHoldBtn" 
+                                ontouchstart="startSheetHold(event)" 
+                                ontouchend="endSheetHold(event)"
+                                onmousedown="startSheetHold(event)" 
+                                onmouseup="endSheetHold(event)"
+                                onmouseleave="endSheetHold(event)">👁️ Original</button>
+                        <button class="sheet-action-btn primary" onclick="enterPrecisionMode()">⚙️ Precisión</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="image-group-buttons">
+                <div class="control-group" style="margin-bottom: 10px;">
+                    <button id="holdViewBtn" class="btn-hold-view">👁️ MANTÉN PULSADO PARA VER EL ORIGINAL</button>
+                </div>
+
+                <div class="grid-2">
+                    <button id="captureBtn" class="btn-primary">📸 CAPTURAR SENSOR (CÁMARA)</button>
+                    <label id="uploadLabel" for="uploadInput" style="background:#1e1e20; text-align:center; cursor:pointer; padding:14px; border-radius:10px; font-size:0.85rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center;">📂 IMPORTAR IMAGEN
+                        <input type="file" id="uploadInput" accept="image/*" class="hidden">
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <button id="toggleManualBtn" class="hidden" style="background: #1e1e20; border: 1px solid var(--border); color: var(--text-main); font-weight: 600; padding: 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; width:100%;">ℹ Información sobre algoritmos</button>
+
+        <div id="manualPanel" class="controls-card hidden" style="border-left: 3px solid var(--accent);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <label class="setting-label" style="color:var(--text-main);">Manual técnico y de interpretación</label>
+                <button id="closeManualBtn" style="padding:4px 8px; font-size:0.75rem; background:#27272a; border:none; border-radius:4px; cursor:pointer;">Cerrar ✕</button>
+            </div>
+            
+            <div style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                <div class="manual-card">
+                    <h4 style="margin:0 0 6px 0; font-size:0.85rem;">1. PCA Stretch RGB (Matriz sRGB lineal)</h4>
+                    <div class="manual-header">Explicación técnica</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Calcula los autovectores ortogonales de la matriz de covarianza en canales RGB descorrelacionando la información espectral para aplicar un estiramiento lineal extremo.</p>
+                    <div class="manual-header">Explicación para usuarios</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Maximiza el contraste cromático de restos degradados de arte rupestre (óxidos de hierro) frente al soporte calizo de la cueva.</p>
+                    <div class="manual-header">Limitaciones</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Los colores obtenidos son abstractos y no representan tonalidades reales. Puede amplificar drásticamente el ruido cromático. No demuestra de forma aislada la existencia de pigmento antrópico ni sustituye la interpretación y diagnóstico arqueológico directo.</p>
+                </div>
+
+                <div class="manual-card">
+                    <h4 style="margin:0 0 6px 0; font-size:0.85rem;">2. PCA Stretch YCbCr (BT.601)</h4>
+                    <div class="manual-header">Explicación técnica</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Transforma los datos aislando la luminancia antes de procesar la varianza estadística estrictamente sobre los componentes de crominancia pura.</p>
+                    <div class="manual-header">Explicación para usuarios</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Útil para discriminar trazos superpuestos o pinturas en abrigos expuestos a condiciones de iluminación solar muy irregular.</p>
+                    <div class="manual-header">Limitaciones</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Genera composiciones de falso color extremo. Las tonalidades son métricas analíticas abstractas y no corresponden a estados cromáticos históricos reales de las pátinas o soportes.</p>
+                </div>
+
+                <div class="manual-card">
+                    <h4 style="margin:0 0 6px 0; font-size:0.85rem;">3. Difference of Gaussians (DoG 2D)</h4>
+                    <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Explicación técnica</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Filtro espacial convolucional de paso de banda obtenido restando dos matrices desenfocadas con radios gaussianos dispares.</p>
+                    <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Explicación para usuarios</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Permite delimitar la morfología de grabados rupestres someros, piqueteados o incisiones en micro-relieve sobre piedra.</p>
+                    <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Limitaciones</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Resalta de manera indiscriminada grietas geológicas naturales, líquenes, exfoliaciones y ruido de textura. No diferencia automáticamente entre la acción antrópica y las alteraciones del soporte.</p>
+                </div>
+
+                <div class="manual-card">
+                    <h4 style="margin:0 0 6px 0; font-size:0.85rem;">4. Unsharp Mask (Máscara de enfoque GPU)</h4>
+                    <div class="manual-header">Explicación técnica</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Sustrae una máscara de baja frecuencia y reinyecta el residuo amplificado para potenciar contrastes locales de alta frecuencia.</p>
+                    <div class="manual-header">Explicación para usuarios</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Ayuda a enfocar contornos desvaídos o trazos geométricos finos ejecutados con carbón vegetal degradado.</p>
+                    <div class="manual-header">Limitaciones</div>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Puede exagerar sustancialmente el ruido digital térmico en tomas subexpuestas. No incrementa bajo ningún concepto la resolución óptica o el nivel de detalle geométrico real capturado por el sensor.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="wrapperProfesional" class="hidden"></div>
+
+        <div id="wrapperSimple" class="controls-card">
+            <label class="setting-label">Presets de Análisis Rápido</label>
+            <select id="presetSelect">
+                <option value="pigmento_rojo">🎨 Pigmento rojo tenue (óxidos de hierro)</option>
+                <option value="rojo_degradado">🦬 Pintura roja degradada (fina o lavada)</option>
+                <option value="blanco">⚪ Pintura blanca / Calcita velada</option>
+                <option value="carbon">⚫ Carbón / Negro orgánico</option>
+                <option value="grabados">🟤 Grabados poco profundos (Microrelieve DoG)</option>
+                <option value="erosionada">🌧 Superficie muy erosionada (Microtexturas)</option>
+                <option value="alto_contraste">☀️ Alto contraste solar / Sombras duras</option>
+                <option value="baja_luz">🌫 Baja iluminación de abrigo / Cuevas</option>
+            </select>
+
+            <div class="control-group" style="margin-top: 8px;">
+                <label class="setting-label">⭐ Mis presets guardados</label>
+                <div class="fav-row">
+                    <select id="favSelectSimple">
+                        <option value="">-- Usar una configuración guardada --</option>
+                    </select>
+                    <button id="deleteFavBtnSimple" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-card pro-card" id="proCardProcessing">
+            <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">1. Configuración del procesamiento</label>
+            <div class="control-group">
+                <label class="setting-label">Algoritmo de procesamiento seleccionado</label>
+                <select id="filterSelect">
+                    <option value="pca_rgb">PCA Stretch estándar (Matriz sRGB Lineal)</option>
+                    <option value="yuv_stretch">PCA Stretch en espacio de color YCbCr (BT.601)</option>
+                    <option value="dog">Filtro estructural: Difference of Gaussians (DoG 2D)</option>
+                    <option value="unsharp_mask">Realce de micro-textura: Unsharp Mask (GPU)</option>
+                </select>
+            </div>
+            
+            <div class="control-group" style="margin-top: 6px;">
+                <label class="setting-label" id="labelIntensity">Intensidad del estiramiento PCA</label>
+                <input type="range" id="intensitySlider" min="5" max="250" value="70">
+                <p id="pcaHelpText" style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0 0 0; line-height: 1.3;">
+                    Controla cuánto se amplifican las diferencias cromáticas obtenidas mediante PCA.<br>
+                    Valores elevados también pueden aumentar el ruido.
+                </p>
+            </div>
+
+            <div class="control-group" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
+                <label class="setting-label">Visualización y niveles estéticos</label>
+                <div class="levels-sliders">
+                    <div class="level-row">
+                        <span>Punto negro:</span>
+                        <input type="range" id="sliderBlack" min="0" max="255" value="0">
+                        <span id="valBlack">0</span>
+                    </div>
+                    <div class="level-row">
+                        <span>Gamma / Gris:</span>
+                        <input type="range" id="sliderGamma" min="10" max="300" value="100">
+                        <span id="valGamma">1.00</span>
+                    </div>
+                    <div class="level-row">
+                        <span>Punto blanco:</span>
+                        <input type="range" id="sliderWhite" min="0" max="255" value="255">
+                        <span id="valWhite">255</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls-card" id="configLibraryCard">
+            <div class="pro-only">
+                <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">2. Biblioteca de configuraciones</label>
+                <div class="control-group" style="margin-bottom: 12px;">
+                    <label class="setting-label">Biblioteca de configuraciones local</label>
+                    <div class="fav-row">
+                        <select id="favSelectPro">
+                            <option value="">-- Seleccionar guardado --</option>
+                        </select>
+                        <button id="deleteFavBtnPro" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
+                        <button id="saveFavBtn" style="padding:12px; background:#27272a; font-size:0.8rem; font-weight:600;">💾 Guardar actual</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="simple-only">
+                <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">Transferencia y documentación</label>
+            </div>
+
+            <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
+                <label class="setting-label" style="color:var(--accent);">📋 Código de configuración rápida (ASW1)</label>
+                <textarea id="shareCodeField" rows="2" placeholder="Pegue aquí un código (ASW1:...) o genere uno desde su matriz activa..." style="width:100%; box-sizing:border-box; background:#101012; color:var(--text-main); border:1px solid var(--border); padding:6px; border-radius:6px;"></textarea>
+                <div class="grid-2" style="margin-top: 4px;">
+                    <button id="btnGenerateCode" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">Generar código</button>
+                    <button id="btnApplyCode" style="padding:10px; font-size:0.78rem; background:var(--accent); font-weight:600; color:#fff; border:none; border-radius:8px; cursor:pointer;">Aplicar código</button>
+                </div>
+            </div>
+
+            <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
+                <label class="setting-label" style="color:var(--success);">📂 Cargar parámetros desde archivo (.JSON)</label>
+                <label for="importJsonInput" style="background:#1e1e20; text-align:center; cursor:pointer; padding:12px; border-radius:8px; font-size:0.82rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    📥 SELECCIONAR ARCHIVO CONFIG.JSON
+                    <input type="file" id="importJsonInput" accept=".json" class="hidden">
+                </label>
+            </div>
+        </div>
+
+        <div class="controls-card pro-card" id="histogramUI" style="padding: 14px; margin: 0; border: 1px solid var(--border);">
+            <label class="setting-label" style="color:var(--text-main); margin-bottom:2px;">3. Análisis estadístico</label>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 4px 0; line-height: 1.2;">HISTOGRAMA DE LA IMAGEN PROCESADA: Distribución estadística tras aplicar el procesamiento seleccionado.</p>
+            
+            <canvas id="histogramCanvas"></canvas>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-family: monospace; font-size: 0.72rem; color: var(--text-muted); padding-top: 4px;">
+                <div>Media: <span id="lblMean" style="color: var(--text-main); font-weight: 600;">-</span></div>
+                <div>Desv. estándar: <span id="lblStd" style="color: var(--text-main); font-weight: 600;">-</span></div>
+                <div>Valor mínimo: <span id="lblMin" style="color: var(--text-main); font-weight: 600;">-</span></div>
+                <div>Valor máximo: <span id="lblMax" style="color: var(--text-main); font-weight: 600;">-</span></div>
+            </div>
+        </div>
+
+        <div id="exportZone" class="controls-card" style="padding: 14px; margin: 0; border: 1px solid var(--border); background: var(--bg-card); display: flex; flex-direction: column; gap: 8px;">
+            <div class="pro-only"><label class="setting-label" style="color:var(--text-main);">4. Exportación</label></div>
+            <div class="simple-only"><label class="setting-label" style="color:var(--text-main);">Exportación final de datos</label></div>
+            
+            <div class="control-group">
+                <label class="setting-label">Nombre del proyecto / exportación</label>
+                <input type="text" id="exportProjectName" placeholder="Ej. Abrigo_Cueva_Pintura1 (Vacío para Auto-Fecha)">
+            </div>
+
+            <div id="advancedExportSelectors" class="grid-2">
+                <div class="control-group">
+                    <label class="setting-label">Modo de salida</label>
+                    <select id="exportFormatSelect" style="padding:8px; font-size:0.8rem;">
+                        <option value="processed">Imagen procesada completa</option>
+                        <option value="original">Imagen original de entrada</option>
+                        <option value="combined">Imagen procesada y original lado a lado</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label class="setting-label">Formato de exportación</label>
+                    <select id="formatSelect" style="padding:8px; font-size:0.8rem;">
+                        <option value="image/png">Formato PNG (Sin pérdidas)</option>
+                        <option value="image/jpeg">Formato JPEG HD (98%)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;">
+                <label class="setting-label">Parámetros de salida del archivo</label>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="exportImgCheck" checked style="width:16px; height:16px;">
+                    <label for="exportImgCheck" style="font-size:0.78rem; color:var(--text-main);">Exportar archivo gráfico (.png / .jpg)</label>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <input type="checkbox" id="exportJsonCheck" checked style="width:16px; height:16px;">
+                    <label for="exportJsonCheck" style="font-size:0.78rem; color:var(--text-main);">Exportar parámetros del procesamiento (.json)</label>
+                </div>
+            </div>
+            
+            <div style="display:flex; align-items:center; gap:8px; margin: 2px 0; border-top: 1px dashed var(--border); padding-top: 8px;">
+                <input type="checkbox" id="geoAuthCheck" style="width:18px; height:18px;">
+                <label for="geoAuthCheck" style="font-size:0.75rem; color:var(--text-muted);">Incrustar metadatos georreferenciales (GPS)</label>
+            </div>
+            <div id="metadataDisplay" class="metadata-box hidden">Esperando coordenadas...</div>
+
+            <div class="grid-2" style="margin-top:4px; border-top:1px solid var(--border); padding-top:10px;">
+                <button id="cleanScreenBtn" style="background:#3f3f46; font-weight:600; font-size:0.82rem; padding:10px; color:#fff; border:none; border-radius:8px; cursor:pointer;">📱 PANTALLA LIMPIA</button>
+                <button id="saveBtn" class="btn-success" style="font-size:0.82rem; padding:10px;">💾 EXPORTAR ARCHIVOS</button>
+            </div>
+        </div>
+
+        <div class="telemetry-panel">
+            <div class="telemetry-row"><span>Estado de operación:</span><span id="telStatus" style="color:#22c55e;">Inicializando subsistemas...</span></div>
+            <div class="telemetry-row"><span>Resolución nativa:</span><span id="telResolution">-</span></div>
+            <div class="telemetry-row"><span>Tamaño en memoria:</span><span id="telSize">-</span></div>
+        </div>
+    </div>
+
+    <div class="clean-bar" id="cleanBar">
+        <button id="cleanHoldViewBtn" style="padding:10px; font-size:0.8rem; background:#27272a; flex-grow:1; font-weight:700;">👁️ MANTENER ORIGINAL</button>
+        <button id="cleanExportBtn" style="padding:10px; font-size:0.8rem; background:var(--success); font-weight:700;">💾 EXPORTAR</button>
+        <button id="restoreScreenBtn" style="padding:10px; font-size:0.8rem; background:#ef4444; font-weight:700;">❌ SALIR</button>
+    </div>
+
+    <script>
+        const ImageLoader = {
+            async processUploadedFile(file) {
+                if (!file || file.size === 0) throw new Error("Archivo vacío detectado.");
+                const telemetry = { size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`, status: "Procesando...", isRaw: false };
+                const buffer = await file.arrayBuffer();
+                const view = new DataView(buffer);
+
+                if (view.byteLength > 4 && ((view.getUint16(0) === 0x4949) || (view.getUint16(0) === 0x4D4D))) {
+                    telemetry.isRaw = true;
+                    throw new Error("Formato RAW/DNG nativo detectado.");
+                }
+
+                const blob = new Blob([buffer]);
+                const bitmap = await createImageBitmap(blob);
+                return { bitmap, telemetry };
+            }
+        };
+
+        const WebGL2Pipeline = {
+            gl: null, program: null, texture: null, vao: null,
+            uniforms: {}, 
+            lastTextureSource: null, 
+
+            vertexShaderSource: `#version 300 es
+                in vec2 position; out vec2 vTexCoord;
+                void main() {
+                    vTexCoord = position * 0.5 + 0.5;
+                    vTexCoord.y = 1.0 - vTexCoord.y;
+                    gl_Position = vec4(position, 0.0, 1.0);
+                }`,
+
+			fragmentShaderSource: `#version 300 es
+                precision highp float;
+                in vec2 vTexCoord; out vec4 fragColor;
+                uniform sampler2D uTexture; uniform vec2 uResolution;
+                uniform int uFilterMode; uniform vec3 uLevels; uniform float uFilterAmount;
+
+                vec3 applyLevels(vec3 color) {
+                    float range = max(uLevels.z - uLevels.x, 1e-5);
+                    vec3 outputColor = clamp((color - uLevels.x) / range, 0.0, 1.0);
+                    return pow(outputColor, vec3(1.0 / uLevels.y)); 
+                }
+
+                vec3 getGaussianBlur(vec2 coord, float radiusScale) {
+                    vec2 texelSize = vec2(1.0) / uResolution;
+                    vec3 accum = vec3(0.0); float totalWeight = 0.0;
+                    float kernel[5] = float[](0.0625, 0.25, 0.375, 0.25, 0.0625);
+                    for (int i = -2; i <= 2; i++) {
+                        for (int j = -2; j <= 2; j++) {
+                            vec2 offset = vec2(float(i), float(j)) * texelSize * radiusScale;
+                            float weight = kernel[i + 2] * kernel[j + 2];
+                            accum += texture(uTexture, coord + offset).rgb * weight;
+                            totalWeight += weight;
+                        }
+                    }
+                    return accum / totalWeight;
+                }
+
+                void main() {
+                    vec3 baseColor = texture(uTexture, vTexCoord).rgb;
+                    vec3 finalColor = baseColor;
+                    if (uFilterMode == 1) {
+                        vec3 blurFine = getGaussianBlur(vTexCoord, 1.2);
+                        vec3 blurCoarse = getGaussianBlur(vTexCoord, 4.0);
+                        float lumaFine = dot(blurFine, vec3(0.299, 0.587, 0.114));
+                        float lumaCoarse = dot(blurCoarse, vec3(0.299, 0.587, 0.114));
+                        finalColor = vec3((lumaFine - lumaCoarse) * uFilterAmount + 0.5);
+                    } else if (uFilterMode == 2) {
+                        vec3 blurred = getGaussianBlur(vTexCoord, 1.8);
+                        finalColor = baseColor + ((baseColor - blurred) * uFilterAmount);
+                    }
+                    fragColor = vec4(applyLevels(finalColor), 1.0);
+                }`,
+
+            init(canvasElement) {
+                this.gl = canvasElement.getContext('webgl2', { alpha: false, antialias: false, powerPreference: "high-performance" });
+                if (!this.gl) throw new Error("WebGL2 no disponible en este dispositivo.");
+                
+                const gl = this.gl;
+                const vs = this.compileShader(gl.VERTEX_SHADER, this.vertexShaderSource);
+                const fs = this.compileShader(gl.FRAGMENT_SHADER, this.fragmentShaderSource);
+                
+                this.program = gl.createProgram();
+                gl.attachShader(this.program, vs); 
+                gl.attachShader(this.program, fs);
+                gl.linkProgram(this.program);
+                
+                if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
+                    throw new Error(`Fallo en linkado WebGL Program: ${gl.getProgramInfoLog(this.program)}`);
+                }
+
+                const uniformKeys = ["uResolution", "uFilterMode", "uLevels", "uFilterAmount"];
+                uniformKeys.forEach(key => {
+                    this.uniforms[key] = gl.getUniformLocation(this.program, key);
+                });
+
+                const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
+                const buffer = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+                
+                this.vao = gl.createVertexArray(); 
+                gl.bindVertexArray(this.vao);
+                const posAttr = gl.getAttribLocation(this.program, "position");
+                gl.enableVertexAttribArray(posAttr);
+                gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
+                
+                this.texture = gl.createTexture();
+                this.lastTextureSource = null;
+            },
+
+            compileShader(type, source) {
+                const gl = this.gl; 
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source); 
+                gl.compileShader(shader);
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    const info = gl.getShaderInfoLog(shader);
+                    gl.deleteShader(shader);
+                    throw new Error(`Fallo compilación Shader (${type === gl.VERTEX_SHADER ? 'Vertex' : 'Fragment'}): ${info}`);
+                }
+                return shader;
+            },
+
+            render(imageData, filterMode, levels, filterAmount) {
+                if (!imageData || imageData.width === 0 || imageData.height === 0) return;
+                const gl = this.gl;
+                gl.viewport(0, 0, imageData.width, imageData.height);
+                gl.useProgram(this.program);
+                gl.activeTexture(gl.TEXTURE0); 
+                gl.bindTexture(gl.TEXTURE_2D, this.texture);
+                
+                if (this.lastTextureSource !== imageData) {
+                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imageData.width, imageData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageData.data);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    this.lastTextureSource = imageData;
+                }
+
+                gl.uniform2f(this.uniforms["uResolution"], imageData.width, imageData.height);
+                gl.uniform1i(this.uniforms["uFilterMode"], filterMode);
+                gl.uniform3f(this.uniforms["uLevels"], levels.black / 255.0, levels.gamma, levels.white / 255.0);
+                gl.uniform1f(this.uniforms["uFilterAmount"], filterAmount);
+                
+                gl.bindVertexArray(this.vao); 
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
+        };
+
+        const CameraController = {
+            stream: null,
+            async init() {
+                try {
+                    this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } });
+                    document.getElementById('videoPreview').srcObject = this.stream;
+                } catch (err) { 
+                    UIController.updateStatus("Sensor de cámara inaccesible o ausente. Use carga de archivos.", "#a1a1aa"); 
+                }
+            }
+        };
+
+        const HistogramController = {
+            draw(imageData) {
+                if (!imageData || imageData.width === 0 || imageData.height === 0) return;
+                const canvas = document.getElementById('histogramCanvas'); 
+                const ctx = canvas.getContext('2d');
+                const w = canvas.width = canvas.clientWidth; 
+                const h = canvas.height = 100;
+                const data = imageData.data; 
+                const len = data.length;
+                let hist = new Int32Array(256);
+
+                let minLuma = 255, maxLuma = 0, sumLuma = 0, sumSqLuma = 0;
+                const pixelCount = len / 4;
+
+                for (let i = 0; i < len; i += 4) {
+                    let luma = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
+                    let rLuma = Math.min(255, Math.max(0, Math.round(luma)));
+                    hist[rLuma]++;
+                    
+                    if (luma < minLuma) minLuma = luma;
+                    if (luma > maxLuma) maxLuma = luma;
+                    sumLuma += luma;
+                    sumSqLuma += luma * luma;
+                }
+
+                const mean = sumLuma / pixelCount;
+                const variance = (sumSqLuma / pixelCount) - (mean * mean);
+                const stdDev = Math.sqrt(Math.max(0, variance));
+
+                document.getElementById('lblMean').innerText = mean.toFixed(1);
+                document.getElementById('lblStd').innerText = stdDev.toFixed(1);
+                document.getElementById('lblMin').innerText = Math.round(minLuma);
+                document.getElementById('lblMax').innerText = Math.round(maxLuma);
+
+                let maxVal = 0;
+                for (let i = 1; i < 255; i++) { if (hist[i] > maxVal) maxVal = hist[i]; }
+                if (maxVal === 0) maxVal = 1;
+
+                ctx.clearRect(0, 0, w, h); 
+                ctx.fillStyle = "rgba(37, 99, 235, 0.5)";
+                const binWidth = w / 256;
+                for (let i = 0; i < 256; i++) {
+                    const binHeight = (hist[i] / maxVal) * h;
+                    ctx.fillRect(i * binWidth, h - binHeight, binWidth, binHeight);
+                }
+            }
+        };
+
+        const FavoritesManager = {
+            favorites: {},
+            load() {
+                const stored = localStorage.getItem('arqueostretch_favs');
+                if (stored) {
+                    try { this.favorites = JSON.parse(stored); } catch(e) { this.favorites = {}; }
+                    this.updateDropdowns();
+                }
+            },
+            saveActive() {
+                const name = prompt("Asigna un nombre a esta configuración técnica:");
+                if (!name) return;
+                this.favorites[name] = {
+                    filter: document.getElementById('filterSelect').value,
+                    intensity: document.getElementById('intensitySlider').value,
+                    black: document.getElementById('sliderBlack').value,
+                    gamma: document.getElementById('sliderGamma').value,
+                    white: document.getElementById('sliderWhite').value
+                };
+                localStorage.setItem('arqueostretch_favs', JSON.stringify(this.favorites));
+                this.updateDropdowns();
+            },
+            deleteSelected(selectId) {
+                const selectEl = document.getElementById(selectId);
+                const name = selectEl.value;
+                if (!name) {
+                    UIController.updateStatus("Selecciona un favorito para poder borrarlo.", "#eab308");
+                    return;
+                }
+                if (confirm(`¿Seguro que deseas eliminar el preset "${name}"?`)) {
+                    delete this.favorites[name];
+                    localStorage.setItem('arqueostretch_favs', JSON.stringify(this.favorites));
+                    this.updateDropdowns();
+                    UIController.updateStatus(`Preset "${name}" eliminado correctamente.`, "#22c55e");
+                }
+            },
+            updateDropdowns() {
+                const selectSimple = document.getElementById('favSelectSimple');
+                const selectPro = document.getElementById('favSelectPro');
+                const template = '<option value="">-- Usar una configuración guardada --</option>';
+                selectSimple.innerHTML = template;
+                if (selectPro) selectPro.innerHTML = template;
+
+                Object.keys(this.favorites).forEach(name => {
+                    const optSimple = document.createElement('option');
+                    optSimple.value = name; optSimple.innerText = name;
+                    selectSimple.appendChild(optSimple);
+
+                    if (selectPro) {
+                        const optPro = document.createElement('option');
+                        optPro.value = name; optPro.innerText = name;
+                        selectPro.appendChild(optPro);
+                    }
+                });
+            },
+            loadConfig(name) {
+                const config = this.favorites[name];
+                if (!config) return;
+
+                document.getElementById('filterSelect').value = config.filter;
+                UIController.currentAlgMode = config.filter;
+                document.getElementById('intensitySlider').value = config.intensity;
+                document.getElementById('sliderBlack').value = config.black;
+                document.getElementById('sliderGamma').value = config.gamma;
+                document.getElementById('sliderWhite').value = config.white;
+                
+                document.getElementById('favSelectSimple').value = name;
+                const selectPro = document.getElementById('favSelectPro');
+                if (selectPro) selectPro.value = name;
+
+                UIController.updateLevelLabels();
+                UIController.dispatchProcessing();
+            }
+        };
+
+        const GPSManager = {
+            telemetry: null,
+            requestLocation() {
+                if (!navigator.geolocation) return;
+                navigator.geolocation.getCurrentPosition((position) => {
+                    this.telemetry = { lat: position.coords.latitude, lon: position.coords.longitude };
+                    document.getElementById('metadataDisplay').innerText = `FOTOCAMPAÑA: ${new Date().toISOString()} | GPS: LAT ${this.telemetry.lat.toFixed(5)}, LON ${this.telemetry.lon.toFixed(5)}`;
+                }, () => {
+                    UIController.updateStatus("Acceso de georreferenciación no disponible.", "#ef4444");
+                });
+            }
+        };
+
+        const ProcessingController = {
+            worker: null,
+            imageVersion: 0,
+            init() {
+                if (this.worker) this.worker.terminate();
+                this.worker = new Worker('worker.js');
+                this.worker.onmessage = (e) => this.handleResponse(e);
+            },
+            dispatch(originalData, filterValue, targetStd) {
+                if (!originalData) return;
+
+                if (filterValue === 'dog' || filterValue === 'unsharp_mask') {
+                    UIController.currentProcessedData = originalData;
+                    UIController.updateStatus("Filtrado espacial activo en GPU.", "#22c55e");
+                    UIController.requestWebGLRender(); 
+                    if (UIController.isLabMode) HistogramController.draw(UIController.currentProcessedData); 
+                    return;
+                }
+
+                UIController.updateStatus("Computando matriz de descorrelación...", "#2563eb");
+                const bufferCopy = new Uint8ClampedArray(originalData.data.length);
+                bufferCopy.set(originalData.data);
+                
+                this.worker.postMessage({
+                    imgData: { width: originalData.width, height: originalData.height, data: bufferCopy },
+                    filter: filterValue, targetStd: targetStd, version: this.imageVersion
+                }, [bufferCopy.buffer]);
+            },
+            handleResponse(e) {
+                if (e.data.version !== this.imageVersion) return; 
+
+                const w = UIController.currentOriginalData.width; 
+                const h = UIController.currentOriginalData.height;
+                
+                UIController.currentProcessedData = new ImageData(e.data.dstUint8, w, h);
+                UIController.updateStatus("Análisis completado.", "#22c55e");
+                
+                if (UIController.isHoldingOriginal) return; 
+                UIController.requestWebGLRender(); 
+                if (UIController.isLabMode) HistogramController.draw(UIController.currentProcessedData);
+            }
+        };
+
+        const ExportManager = {
+            getFileName(extension) {
+                let baseName = document.getElementById('exportProjectName').value.trim();
+                if (!baseName) {
+                    const now = new Date();
+                    const pad = num => String(num).padStart(2, '0');
+                    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+                    const activeAlg = (UIController.isLabMode ? document.getElementById('filterSelect').value : UIController.currentAlgMode).toUpperCase();
+                    baseName = `${dateStr}_${activeAlg}`;
+                }
+                return baseName.replace(/[^a-zA-Z0-9_\-]/g, '_') + '.' + extension;
+            },
+
+            exportDocument() {
+                if (!UIController.currentOriginalData || !UIController.currentProcessedData) {
+                    UIController.updateStatus("Matriz de datos vacía.", "#ef4444"); return;
+                }
+                const exportMode = document.getElementById('exportFormatSelect').value;
+                const mimeType = document.getElementById('formatSelect').value;
+                const extension = mimeType === 'image/jpeg' ? 'jpg' : 'png';
+                const quality = mimeType === 'image/jpeg' ? 0.98 : 1.0;
+                const w = UIController.currentOriginalData.width;
+                const h = UIController.currentOriginalData.height;
+                const outCanvas = document.createElement('canvas'); const oCtx = outCanvas.getContext('2d');
+                UIController.requestWebGLRender();
+                const glCanvas = document.getElementById('canvasView');
+
+                if (exportMode === 'processed') {
+                    outCanvas.width = w; outCanvas.height = h; oCtx.drawImage(glCanvas, 0, 0, w, h);
+                } else if (exportMode === 'original') {
+                    outCanvas.width = w; outCanvas.height = h; oCtx.putImageData(UIController.currentOriginalData, 0, 0);
+                } else if (exportMode === 'combined') {
+                    outCanvas.width = w * 2; outCanvas.height = h;
+                    const tempCanvasOrig = document.createElement('canvas'); tempCanvasOrig.width = w; tempCanvasOrig.height = h;
+                    tempCanvasOrig.getContext('2d').putImageData(UIController.currentOriginalData, 0, 0);
+                    oCtx.drawImage(tempCanvasOrig, 0, 0, w, h); oCtx.drawImage(glCanvas, w, 0, w, h);
+                }
+
+                if (document.getElementById('exportImgCheck').checked) {
+                    const fileNameStr = this.getFileName(extension);
+                    try {
+                        const dataUrl = outCanvas.toDataURL(mimeType, quality);
+                        const link = document.createElement('a');
+                        link.download = fileNameStr;
+                        link.href = dataUrl; link.click();
+                        UIController.updateStatus("Exportación completada.", "#22c55e");
+                    } catch (err) { UIController.updateStatus(err.message, "#ef4444"); return; }
+                }
+
+                if (document.getElementById('exportJsonCheck').checked) {
+                    const activeAlg = UIController.isLabMode ? document.getElementById('filterSelect').value : UIController.currentAlgMode;
+                    const jsonMetadata = {
+                        "software": "ArqueoStretch",
+                        "version": "1.2.0",
+                        "processing": {
+                            "algorithm": activeAlg,
+                            "targetStd": parseFloat(document.getElementById('intensitySlider').value),
+                            "levels": {
+                                "black": parseFloat(document.getElementById('sliderBlack').value),
+                                "gamma": parseFloat(document.getElementById('sliderGamma').value),
+                                "white": parseFloat(document.getElementById('sliderWhite').value)
+                            }
+                        },
+                        "date": new Date().toISOString()
+                    };
+
+                    const jsonBlob = new Blob([JSON.stringify(jsonMetadata, null, 4)], { type: "application/json" });
+                    const jsonLink = document.createElement('a');
+                    jsonLink.download = this.getFileName('json');
+                    jsonLink.href = URL.createObjectURL(jsonBlob);
+                    jsonLink.click();
+                    URL.revokeObjectURL(jsonLink.href);
+                }
+            }
+        };
+
+        const UIController = {
+            currentOriginalData: null, 
+            currentProcessedData: null, 
+            currentAlgMode: 'pca_rgb',
+            isLabMode: false,
+            isHoldingOriginal: false,
+            offscreenCanvas: null, 
+
+            presets: {
+                pigmento_rojo:   { filter: 'pca_rgb', intensity: 110, black: 15, gamma: 95, white: 240 },
+                rojo_degradado:  { filter: 'yuv_stretch', intensity: 160, black: 5, gamma: 115, white: 250 },
+                blanco:          { filter: 'yuv_stretch', intensity: 75, black: 30, gamma: 75, white: 220 },
+                carbon:          { filter: 'pca_rgb', intensity: 50, black: 60, gamma: 140, white: 210 },
+                grabados:        { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
+                erosionada:      { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
+                alto_contraste:  { filter: 'pca_rgb', intensity: 85, black: 45, gamma: 65, white: 215 },
+                baja_luz:        { filter: 'yuv_stretch', intensity: 120, black: 0, gamma: 175, white: 255 }
+            },
+
+            init() {
+                try { WebGL2Pipeline.init(document.getElementById('canvasView')); } catch (err) { this.updateStatus(err.message, "#ef4444"); return; }
+                ProcessingController.init();
+                FavoritesManager.load();
+                this.setupEventListeners();
+                CameraController.init();
+                this.switchUIMode(false);
+                this.offscreenCanvas = document.createElement('canvas');
+                GestureController.init();
+            },
+
+            switchUIMode(toLab) {
+                this.isLabMode = toLab;
+                const manualBtn = document.getElementById('toggleManualBtn');
+                const manualPanel = document.getElementById('manualPanel');
+
+                if(toLab) {
+                    document.getElementById('tabProfesional').classList.add('active');
+                    document.getElementById('tabSimple').classList.remove('active');
+                    document.getElementById('wrapperSimple').classList.add('hidden');
+                    
+                    // Mostrar el botón del manual en modo profesional
+                    manualBtn.classList.remove('hidden');
+                    
+                    document.getElementById('filterSelect').value = this.currentAlgMode;
+                    if (this.currentProcessedData) HistogramController.draw(this.currentProcessedData);
+                } else {
+                    document.getElementById('tabSimple').classList.add('active');
+                    document.getElementById('tabProfesional').classList.remove('active');
+                    document.getElementById('wrapperSimple').classList.remove('hidden');
+                    
+                    // Ocultar el botón y el panel del manual al volver al modo simple
+                    manualBtn.classList.add('hidden');
+                    manualPanel.classList.add('hidden');
+                    
+                    document.getElementById('exportFormatSelect').value = 'processed';
+                    this.applyPresetValues();
+                }
+                this.updateInterfaceLabels();
+            },
+
+            updateInterfaceLabels() {
+                const filterValue = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
+                const labelIntensity = document.getElementById('labelIntensity');
+                
+                if (filterValue === 'pca_rgb' || filterValue === 'yuv_stretch') {
+                    labelIntensity.innerText = "Intensidad del estiramiento PCA";
+                    document.getElementById('pcaHelpText').classList.remove('hidden');
+                } else {
+                    labelIntensity.innerText = "Intensidad del filtro seleccionado";
+                    document.getElementById('pcaHelpText').classList.add('hidden');
+                }
+            },
+
+            applyPresetValues() {
+                if (this.isLabMode) return;
+                const pKey = document.getElementById('presetSelect').value;
+                const config = this.presets[pKey];
+                if (!config) return;
+
+                this.currentAlgMode = config.filter;
+                document.getElementById('intensitySlider').value = config.intensity;
+                document.getElementById('sliderBlack').value = config.black;
+                document.getElementById('sliderGamma').value = config.gamma;
+                document.getElementById('sliderWhite').value = config.white;
+                this.updateLevelLabels();
+                this.dispatchProcessing();
+                this.updateInterfaceLabels();
+            },
+
+            generateShareableCode() {
+                const activeAlg = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
+                const configObj = {
+                    "v": "1.2.0",
+                    "alg": activeAlg,
+                    "std": parseInt(document.getElementById('intensitySlider').value),
+                    "b": parseInt(document.getElementById('sliderBlack').value),
+                    "g": parseInt(document.getElementById('sliderGamma').value),
+                    "w": parseInt(document.getElementById('sliderWhite').value)
+                };
+                const base64Str = btoa(JSON.stringify(configObj));
+                document.getElementById('shareCodeField').value = "ASW1:" + base64Str;
+                this.updateStatus("Código analítico generado.", "#22c55e");
+            },
+
+            applyShareableCode() {
+                const code = document.getElementById('shareCodeField').value.trim();
+                if (!code.startsWith("ASW1:")) {
+                    alert("Aviso de Compatibilidad: El código analítico ingresado no es soportado o es incompatible con la firma de esta versión (ASW1).");
+                    return;
+                }
+                try {
+                    const base64Str = code.substring(5);
+                    const configObj = JSON.parse(atob(base64Str));
+                    
+                    if (this.isLabMode) {
+                        document.getElementById('filterSelect').value = configObj.alg;
+                    } else {
+                        this.currentAlgMode = configObj.alg;
+                    }
+                    document.getElementById('intensitySlider').value = configObj.std;
+                    document.getElementById('sliderBlack').value = configObj.b;
+                    document.getElementById('sliderGamma').value = configObj.g;
+                    document.getElementById('sliderWhite').value = configObj.w;
+
+                    this.updateLevelLabels();
+                    this.updateInterfaceLabels();
+                    this.dispatchProcessing();
+                    this.requestWebGLRender();
+                    this.updateStatus("Configuración inyectada con éxito.", "#22c55e");
+                } catch (e) {
+                    alert("Error estructural al parsear la cadena analítica base64.");
+                }
+            },
+
+            setupEventListeners() {
+                document.getElementById('tabSimple').addEventListener('click', () => this.switchUIMode(false));
+                document.getElementById('tabProfesional').addEventListener('click', () => this.switchUIMode(true));
+                document.getElementById('presetSelect').addEventListener('change', () => this.applyPresetValues());
+
+                document.getElementById('btnGenerateCode').addEventListener('click', () => this.generateShareableCode());
+                document.getElementById('btnApplyCode').addEventListener('click', () => this.applyShareableCode());
+
+                // MANEJADOR DE EVENTOS PARA LA IMPORTACIÓN DEL ARCHIVO PARSEADO (.JSON)
+                document.getElementById('importJsonInput').addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        try {
+                            const parsed = JSON.parse(event.target.result);
+                            if (!parsed.processing || !parsed.processing.algorithm || parsed.processing.targetStd === undefined) {
+                                throw new Error("Estructura incompatible o JSON corrupto.");
+                            }
+
+                            const proc = parsed.processing;
+                            if (this.isLabMode) {
+                                document.getElementById('filterSelect').value = proc.algorithm;
+                            } else {
+                                this.currentAlgMode = proc.algorithm;
+                            }
+
+                            document.getElementById('intensitySlider').value = proc.targetStd;
+
+                            if (proc.levels) {
+                                document.getElementById('sliderBlack').value = proc.levels.black ?? 0;
+                                document.getElementById('sliderGamma').value = proc.levels.gamma ?? 100;
+                                document.getElementById('sliderWhite').value = proc.levels.white ?? 255;
+                            }
+
+                            this.updateLevelLabels();
+                            this.updateInterfaceLabels();
+                            this.dispatchProcessing();
+                            this.requestWebGLRender();
+                            this.updateStatus("Configuración JSON importada con éxito.", "#22c55e");
+                        } catch (err) {
+                            alert("Fallo estructural al importar el archivo JSON: " + err.message);
+                            this.updateStatus("Fallo en parseo JSON.", "#ef4444");
+                        }
+                    };
+                    reader.readAsText(file);
+                    e.target.value = ""; // Limpiar búfer del input file
+                });
+
+                document.getElementById('toggleManualBtn').addEventListener('click', () => {
+                    const panel = document.getElementById('manualPanel');
+                    if(panel.classList.contains('hidden')) {
+                        panel.classList.remove('hidden');
+                        document.getElementById('toggleManualBtn').innerText = "ℹ Información sobre algoritmos";
+                    } else {
+                        panel.classList.add('hidden');
+                        document.getElementById('toggleManualBtn').innerText = "ℹ Información sobre algoritmos";
+                    }
+                });
+                document.getElementById('closeManualBtn').addEventListener('click', () => {
+                    document.getElementById('manualPanel').classList.add('hidden');
+                    document.getElementById('toggleManualBtn').innerText = "ℹ Información sobre algoritmos";
+                });
+
+                document.getElementById('uploadInput').addEventListener('change', async (e) => {
+                    if (!e.target.files[0]) return;
+                    try {
+                        const { bitmap, telemetry } = await ImageLoader.processUploadedFile(e.target.files[0]);
+                        document.getElementById('telSize').innerText = telemetry.size;
+                        this.loadBitmapIntoPipeline(bitmap);
+                    } catch (err) { this.updateStatus(err.message, "#ef4444"); }
+                });
+
+                document.getElementById('captureBtn').addEventListener('click', async () => {
+                    const video = document.getElementById('videoPreview');
+                    if (!CameraController.stream || video.paused || video.videoWidth === 0 || video.videoHeight === 0) return;
+                    
+                    this.offscreenCanvas.width = video.videoWidth; 
+                    this.offscreenCanvas.height = video.videoHeight;
+                    this.offscreenCanvas.getContext('2d').drawImage(video, 0, 0);
+                    const bitmap = await createImageBitmap(this.offscreenCanvas);
+                    this.loadBitmapIntoPipeline(bitmap);
+                });
+
+                ['sliderBlack', 'sliderGamma', 'sliderWhite'].forEach(id => {
+                    document.getElementById(id).addEventListener('input', () => { this.updateLevelLabels(); this.requestWebGLRender(); });
+                });
+
+                document.getElementById('filterSelect').addEventListener('change', (e) => {
+                    this.currentAlgMode = e.target.value;
+                    this.updateInterfaceLabels();
+                    this.dispatchProcessing();
+                });
+                
+                document.getElementById('intensitySlider').addEventListener('input', () => this.dispatchProcessing());
+
+                const startHold = (e) => {
+                    e.preventDefault();
+                    if (!this.currentOriginalData) return;
+                    this.isHoldingOriginal = true;
+                    WebGL2Pipeline.render(this.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
+                };
+
+                const endHold = (e) => {
+                    e.preventDefault();
+                    if (!this.isHoldingOriginal) return;
+                    this.isHoldingOriginal = false;
+                    this.requestWebGLRender();
+                };
+
+                const holdBtn = document.getElementById('holdViewBtn');
+                holdBtn.addEventListener('mousedown', startHold);
+                holdBtn.addEventListener('mouseup', endHold);
+                holdBtn.addEventListener('mouseleave', endHold);
+                holdBtn.addEventListener('touchstart', startHold, { passive: false });
+                holdBtn.addEventListener('touchend', endHold, { passive: false });
+                holdBtn.addEventListener('touchcancel', endHold, { passive: false });
+
+                const cleanHoldBtn = document.getElementById('cleanHoldViewBtn');
+                cleanHoldBtn.addEventListener('mousedown', startHold);
+                cleanHoldBtn.addEventListener('mouseup', endHold);
+                cleanHoldBtn.addEventListener('mouseleave', endHold);
+                cleanHoldBtn.addEventListener('touchstart', startHold, { passive: false });
+                cleanHoldBtn.addEventListener('touchend', endHold, { passive: false });
+                cleanHoldBtn.addEventListener('touchcancel', endHold, { passive: false });
+
+                document.getElementById('cleanScreenBtn').addEventListener('click', () => { document.body.classList.add('clean-screen'); });
+                document.getElementById('restoreScreenBtn').addEventListener('click', () => { document.body.classList.remove('clean-screen'); this.requestWebGLRender(); });
+
+                document.getElementById('geoAuthCheck').addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        document.getElementById('metadataDisplay').classList.remove('hidden');
+                        GPSManager.requestLocation();
+                    } else { document.getElementById('metadataDisplay').classList.add('hidden'); }
+                });
+
+                const saveFavBtn = document.getElementById('saveFavBtn');
+                if (saveFavBtn) saveFavBtn.addEventListener('click', () => FavoritesManager.saveActive());
+                
+                document.getElementById('favSelectSimple').addEventListener('change', (e) => FavoritesManager.loadConfig(e.target.value));
+                const favSelectPro = document.getElementById('favSelectPro');
+                if (favSelectPro) favSelectPro.addEventListener('change', (e) => FavoritesManager.loadConfig(e.target.value));
+
+                document.getElementById('deleteFavBtnSimple').addEventListener('click', () => FavoritesManager.deleteSelected('favSelectSimple'));
+                const deleteFavBtnPro = document.getElementById('deleteFavBtnPro');
+                if (deleteFavBtnPro) deleteFavBtnPro.addEventListener('click', () => FavoritesManager.deleteSelected('favSelectPro'));
+
+                document.getElementById('saveBtn').addEventListener('click', () => ExportManager.exportDocument());
+                document.getElementById('cleanExportBtn').addEventListener('click', () => ExportManager.exportDocument());
+            },
+
+            loadBitmapIntoPipeline(bitmap) {
+                const maxPixels = 16777216; 
+                if (bitmap.width * bitmap.height > maxPixels) {
+                    this.updateStatus("Error: Imagen excede los 16 MP.", "#ef4444");
+                    bitmap.close(); return;
+                }
+                if (bitmap.width <= 0 || bitmap.height <= 0) {
+                    this.updateStatus("Error: Dimensiones de archivo corruptas o 0x0.", "#ef4444");
+                    bitmap.close(); return;
+                }
+
+                ProcessingController.imageVersion++; 
+                this.currentProcessedData = null; 
+
+                const glCanvas = document.getElementById('canvasView');
+                glCanvas.width = bitmap.width; 
+                glCanvas.height = bitmap.height;
+                
+                this.offscreenCanvas.width = bitmap.width; 
+                this.offscreenCanvas.height = bitmap.height;
+                const ctx = this.offscreenCanvas.getContext('2d');
+                ctx.drawImage(bitmap, 0, 0);
+                
+                this.currentOriginalData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
+                
+                document.getElementById('telResolution').innerText = `${bitmap.width} x ${bitmap.height} px`;
+                document.getElementById('videoPreview').classList.add('hidden');
+                document.getElementById('canvasView').classList.remove('hidden');
+
+                const gestureLayer = document.getElementById('gestureLayer');
+                if (gestureLayer) gestureLayer.classList.remove('hidden');
+                GestureController.updateModeIndicator();
+
+                WebGL2Pipeline.render(this.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
+
+                if (!this.isLabMode) { this.applyPresetValues(); } else { this.dispatchProcessing(); }
+                bitmap.close();
+            },
+
+            dispatchProcessing() {
+                const filterValue = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
+                const targetStd = parseFloat(document.getElementById('intensitySlider').value);
+                ProcessingController.dispatch(this.currentOriginalData, filterValue, targetStd);
+            },
+
+            requestWebGLRender() {
+                if (!this.currentProcessedData || this.isHoldingOriginal) return;
+                const filterValue = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
+                const targetStd = parseFloat(document.getElementById('intensitySlider').value);
+                let glFilterMode = 0;
+                if (filterValue === 'dog') glFilterMode = 1;
+                if (filterValue === 'unsharp_mask') glFilterMode = 2;
+
+                const levels = {
+                    black: parseFloat(document.getElementById('sliderBlack').value),
+                    gamma: parseFloat(document.getElementById('sliderGamma').value) / 100.0,
+                    white: parseFloat(document.getElementById('sliderWhite').value)
+                };
+                const filterAmount = filterValue === 'dog' ? (targetStd / 5.0) : (targetStd / 45.0);
+                WebGL2Pipeline.render(this.currentProcessedData, glFilterMode, levels, filterAmount);
+            },
+
+            updateLevelLabels() {
+                document.getElementById('valBlack').innerText = document.getElementById('sliderBlack').value;
+                document.getElementById('valGamma').innerText = (document.getElementById('sliderGamma').value / 100.0).toFixed(2);
+                document.getElementById('valWhite').innerText = document.getElementById('sliderWhite').value;
+            },
+
+            updateStatus(msg, color) {
+                const el = document.getElementById('telStatus'); el.innerText = msg; el.style.color = color;
+            }
+        };
+
+        
+// ============================================================
+// MÓDULO: GESTOS + AJUSTE PRECISO (B+C) + BOTTOM SHEET (A)
+// ============================================================
+
+const GestureController = {
+    active: false,
+    startX: 0, startY: 0,
+    startValue: 0,
+    currentParam: 'intensity',
+    paramMap: {
+        intensity: { label: 'Intensidad', min: 5, max: 250, step: 1, factor: 0.8 },
+        black:     { label: 'Punto negro', min: 0, max: 255, step: 1, factor: 1.2 },
+        gamma:     { label: 'Gamma', min: 10, max: 300, step: 1, factor: 1.0 },
+        white:     { label: 'Punto blanco', min: 0, max: 255, step: 1, factor: 1.2 }
+    },
+    hintShown: false,
+    lastTap: 0,
+
+    init() {
+        const layer = document.getElementById('gestureLayer');
+        if (!layer) return;
+
+        layer.addEventListener('touchstart', (e) => this.onStart(e.touches[0], e), { passive: false });
+        layer.addEventListener('touchmove', (e) => this.onMove(e.touches[0], e), { passive: false });
+        layer.addEventListener('touchend', (e) => this.onEnd(e), { passive: false });
+        layer.addEventListener('touchcancel', (e) => this.onEnd(e), { passive: false });
+
+        layer.addEventListener('mousedown', (e) => this.onStart(e, e));
+        window.addEventListener('mousemove', (e) => { if (this.active) this.onMove(e, e); });
+        window.addEventListener('mouseup', (e) => { if (this.active) this.onEnd(e); });
+
+        layer.addEventListener('touchend', (e) => this.detectDoubleTap(e));
+        layer.addEventListener('mouseup', (e) => this.detectDoubleTap(e));
+    },
+
+    onStart(touch, e) {
+        this.active = true;
+        this.startX = touch.clientX;
+        this.startY = touch.clientY;
+
+        const elId = this.currentParam === 'intensity' ? 'intensitySlider' :
+                     this.currentParam === 'black' ? 'sliderBlack' :
+                     this.currentParam === 'gamma' ? 'sliderGamma' : 'sliderWhite';
+        this.startValue = parseFloat(document.getElementById(elId).value);
+
+        if (!this.hintShown) {
+            this.hintShown = true;
+            const hint = document.getElementById('gestureHint');
+            if (hint) hint.style.opacity = '0';
+        }
+
+        this.showBadge(true);
+        if (e.preventDefault) e.preventDefault();
+    },
+
+    onMove(touch, e) {
+        if (!this.active) return;
+        const dx = touch.clientX - this.startX;
+        const param = this.paramMap[this.currentParam];
+
+        let newVal = this.startValue + (dx * param.factor);
+        newVal = Math.max(param.min, Math.min(param.max, Math.round(newVal / param.step) * param.step));
+
+        this.applyValue(newVal);
+        this.updateBadge(newVal);
+        if (e.preventDefault) e.preventDefault();
+    },
+
+    onEnd(e) {
+        this.active = false;
+        setTimeout(() => this.showBadge(false), 600);
+    },
+
+    detectDoubleTap(e) {
+        const now = Date.now();
+        if (now - this.lastTap < 300) {
+            enterPrecisionMode();
+        }
+        this.lastTap = now;
+    },
+
+    applyValue(val) {
+        const elId = this.currentParam === 'intensity' ? 'intensitySlider' :
+                     this.currentParam === 'black' ? 'sliderBlack' :
+                     this.currentParam === 'gamma' ? 'sliderGamma' : 'sliderWhite';
+        const el = document.getElementById(elId);
+        if (el) el.value = val;
+
+        if (this.currentParam !== 'intensity') {
+            UIController.updateLevelLabels();
+        }
+        UIController.dispatchProcessing();
+        UIController.requestWebGLRender();
+        this.updateModeIndicator();
+    },
+
+    updateBadge(val) {
+        const badge = document.getElementById('gestureBadge');
+        const param = this.paramMap[this.currentParam];
+        let display = val;
+        if (this.currentParam === 'gamma') display = (val / 100).toFixed(2);
+        badge.innerText = param.label + ': ' + display;
+    },
+
+    showBadge(show) {
+        const badge = document.getElementById('gestureBadge');
+        badge.style.opacity = show ? '1' : '0';
+    },
+
+    updateModeIndicator() {
+        const ind = document.getElementById('modeIndicator');
+        if (!ind) return;
+        const filter = UIController.isLabMode 
+            ? document.getElementById('filterSelect').value 
+            : UIController.currentAlgMode;
+        const intensityVal = document.getElementById('intensitySlider').value;
+        const labels = { pca_rgb: 'PCA RGB', yuv_stretch: 'YCbCr', dog: 'DoG', unsharp_mask: 'Unsharp' };
+        ind.innerText = (labels[filter] || filter) + ' · ' + this.paramMap[this.currentParam].label + ' ' + intensityVal;
+    },
+
+    setActiveParam(param) {
+        this.currentParam = param;
+        this.updateModeIndicator();
+    }
+};
+
+let precisionParam = 'intensity';
+
+function enterPrecisionMode() {
+    const overlay = document.getElementById('precisionOverlay');
+    overlay.classList.add('active');
+    updatePrecisionUI();
+}
+
+function exitPrecisionMode() {
+    document.getElementById('precisionOverlay').classList.remove('active');
+}
+
+function selectPrecisionParam(param) {
+    precisionParam = param;
+    GestureController.setActiveParam(param);
+
+    document.querySelectorAll('.precision-chip').forEach(chip => {
+        const isActive = chip.dataset.param === param;
+        chip.classList.toggle('active', isActive);
+    });
+
+    updatePrecisionUI();
+}
+
+function updatePrecisionUI() {
+    const config = {
+        intensity: { el: 'intensitySlider', label: 'Intensidad del estiramiento', displayFn: v => v },
+        black:     { el: 'sliderBlack',     label: 'Punto negro',                 displayFn: v => v },
+        gamma:     { el: 'sliderGamma',     label: 'Gamma / gris',                displayFn: v => (v/100).toFixed(2) },
+        white:     { el: 'sliderWhite',     label: 'Punto blanco',                displayFn: v => v }
+    };
+
+    const c = config[precisionParam];
+    const sourceEl = document.getElementById(c.el);
+    const slider = document.getElementById('precisionSlider');
+
+    slider.min = sourceEl.min;
+    slider.max = sourceEl.max;
+    slider.value = sourceEl.value;
+
+    document.getElementById('precisionLabel').innerText = c.label;
+    document.getElementById('precisionValue').innerText = c.displayFn(parseFloat(sourceEl.value));
+}
+
+function onPrecisionInput(val) {
+    const elMap = {
+        intensity: 'intensitySlider',
+        black: 'sliderBlack',
+        gamma: 'sliderGamma',
+        white: 'sliderWhite'
+    };
+    const targetEl = document.getElementById(elMap[precisionParam]);
+    targetEl.value = val;
+
+    const displayFn = {
+        intensity: v => v,
+        black: v => v,
+        gamma: v => (v/100).toFixed(2),
+        white: v => v
+    };
+    document.getElementById('precisionValue').innerText = displayFn[precisionParam](parseFloat(val));
+
+    if (precisionParam !== 'intensity') UIController.updateLevelLabels();
+    UIController.dispatchProcessing();
+    UIController.requestWebGLRender();
+    GestureController.updateModeIndicator();
+}
+
+let sheetCollapsed = false;
+
+function toggleSheet() {
+    const sheet = document.getElementById('bottomSheet');
+    sheetCollapsed = !sheetCollapsed;
+    sheet.classList.toggle('collapsed', sheetCollapsed);
+}
+
+function quickPreset(key) {
+    const preset = UIController.presets[key];
+    if (!preset) return;
+
+    UIController.currentAlgMode = preset.filter;
+    document.getElementById('intensitySlider').value = preset.intensity;
+    document.getElementById('sliderBlack').value = preset.black;
+    document.getElementById('sliderGamma').value = preset.gamma;
+    document.getElementById('sliderWhite').value = preset.white;
+
+    if (UIController.isLabMode) {
+        document.getElementById('filterSelect').value = preset.filter;
+    }
+
+    UIController.updateLevelLabels();
+    UIController.updateInterfaceLabels();
+    UIController.dispatchProcessing();
+    GestureController.updateModeIndicator();
+}
+
+let sheetHolding = false;
+
+function startSheetHold(e) {
+    e.preventDefault();
+    if (!UIController.currentOriginalData) return;
+    sheetHolding = true;
+    UIController.isHoldingOriginal = true;
+    WebGL2Pipeline.render(UIController.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
+    const btn = document.getElementById('sheetHoldBtn');
+    if (btn) btn.style.background = '#18181b';
+}
+
+function endSheetHold(e) {
+    e.preventDefault();
+    if (!sheetHolding) return;
+    sheetHolding = false;
+    UIController.isHoldingOriginal = false;
+    UIController.requestWebGLRender();
+    const btn = document.getElementById('sheetHoldBtn');
+    if (btn) btn.style.background = '#1e1e20';
+}
+
+
+
+// ============================================================
+// MÓDULO: MODO SIMPLE MÓVIL — DS STRETCH STYLE
+// ============================================================
+
+let mobileExportFlags = { img: true, json: true, geo: false };
+let currentMobilePreset = 'pigmento_rojo';
+
+function applyMobilePreset(key, btnEl) {
+    const preset = UIController.presets[key];
+    if (!preset) return;
+
+    currentMobilePreset = key;
+
+    // Marcar botón activo visualmente
+    document.querySelectorAll('.mobile-preset-btn').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+
+    // Aplicar configuración
+    UIController.currentAlgMode = preset.filter;
+    document.getElementById('intensitySlider').value = preset.intensity;
+    document.getElementById('sliderBlack').value = preset.black;
+    document.getElementById('sliderGamma').value = preset.gamma;
+    document.getElementById('sliderWhite').value = preset.white;
+
+    if (UIController.isLabMode) {
+        document.getElementById('filterSelect').value = preset.filter;
+    }
+
+    UIController.updateLevelLabels();
+    UIController.updateInterfaceLabels();
+    UIController.dispatchProcessing();
+    if (GestureController.updateModeIndicator) {
+        GestureController.updateModeIndicator();
+    }
+
+    // Feedback táctil
+    if (navigator.vibrate) navigator.vibrate(8);
+}
+
+function switchToProMode() {
+    // Cambiar a modo profesional
+    UIController.switchUIMode(true);
+    document.body.classList.add('lab-mode');
+
+    // En móvil, mostrar los controles profesionales
+    if (window.innerWidth <= 600) {
+        // Asegurar que se vean los controles pro
+        document.getElementById('wrapperSimple').classList.add('hidden');
+        document.getElementById('tabProfesional').classList.add('active');
+        document.getElementById('tabSimple').classList.remove('active');
+    }
+}
+
+function switchToSimpleMode() {
+    UIController.switchUIMode(false);
+    document.body.classList.remove('lab-mode');
+
+    if (window.innerWidth <= 600) {
+        document.getElementById('wrapperSimple').classList.remove('hidden');
+        document.getElementById('tabSimple').classList.add('active');
+        document.getElementById('tabProfesional').classList.remove('active');
+    }
+}
+
+// ============================================================
+// EXPORTACIÓN MÓVIL — BOTTOM SHEET
+// ============================================================
+
+function openExportSheet() {
+    if (!UIController.currentOriginalData || !UIController.currentProcessedData) {
+        UIController.updateStatus("Carga una imagen primero.", "#ef4444");
+        if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
+        return;
+    }
+    document.getElementById('exportSheetOverlay').classList.add('active');
+    document.getElementById('exportSheet').classList.add('active');
+}
+
+function closeExportSheet() {
+    document.getElementById('exportSheetOverlay').classList.remove('active');
+    document.getElementById('exportSheet').classList.remove('active');
+}
+
+function toggleMobileExport(flag) {
+    mobileExportFlags[flag] = !mobileExportFlags[flag];
+    const el = document.getElementById('mobileToggle' + flag.charAt(0).toUpperCase() + flag.slice(1));
+    el.classList.toggle('active', mobileExportFlags[flag]);
+}
+
+function executeMobileExport() {
+    // Sincronizar valores del sheet con los controles originales
+    document.getElementById('exportProjectName').value = document.getElementById('mobileExportName').value;
+    document.getElementById('exportFormatSelect').value = document.getElementById('mobileExportMode').value;
+    document.getElementById('formatSelect').value = document.getElementById('mobileExportFormat').value;
+    document.getElementById('exportImgCheck').checked = mobileExportFlags.img;
+    document.getElementById('exportJsonCheck').checked = mobileExportFlags.json;
+    document.getElementById('geoAuthCheck').checked = mobileExportFlags.geo;
+
+    if (mobileExportFlags.geo) {
+        document.getElementById('metadataDisplay').classList.remove('hidden');
+        GPSManager.requestLocation();
+    }
+
+    closeExportSheet();
+    ExportManager.exportDocument();
+
+    if (navigator.vibrate) navigator.vibrate(20);
+}
+
+// ============================================================
+// SOBRESCRIBIR switchUIMode para manejar móvil
+// ============================================================
+
+const _originalSwitchUIMode = UIController.switchUIMode.bind(UIController);
+UIController.switchUIMode = function(toLab) {
+    _originalSwitchUIMode(toLab);
+
+    if (window.innerWidth <= 600) {
+        if (toLab) {
+            document.body.classList.add('lab-mode');
+            // En modo pro móvil, ocultar strip y barra simple
+            const strip = document.getElementById('mobilePresetsStrip');
+            const bar = document.getElementById('mobileSimpleBar');
+            if (strip) strip.style.display = 'none';
+            if (bar) bar.style.display = 'none';
+        } else {
+            document.body.classList.remove('lab-mode');
+            // En modo simple móvil, mostrar strip y barra
+            const strip = document.getElementById('mobilePresetsStrip');
+            const bar = document.getElementById('mobileSimpleBar');
+            if (strip) strip.style.display = 'flex';
+            if (bar) bar.style.display = 'flex';
+        }
+    }
+};
+
+// ============================================================
+// SOBRESCRIBIR loadBitmapIntoPipeline para activar modo simple móvil
+// ============================================================
+
+const _originalLoadBitmap = UIController.loadBitmapIntoPipeline.bind(UIController);
+UIController.loadBitmapIntoPipeline = function(bitmap) {
+    _originalLoadBitmap(bitmap);
+
+    if (window.innerWidth <= 600 && !this.isLabMode) {
+        const strip = document.getElementById('mobilePresetsStrip');
+        const bar = document.getElementById('mobileSimpleBar');
+        if (strip) strip.style.display = 'flex';
+        if (bar) bar.style.display = 'flex';
+
+        // Aplicar el preset activo por defecto
+        const activeBtn = document.querySelector('.mobile-preset-btn.active');
+        if (activeBtn) {
+            applyMobilePreset(activeBtn.dataset.preset, activeBtn);
+        }
+    }
+};
+
+
+window.addEventListener('DOMContentLoaded', () => UIController.init());
+    </script>
+
+    <!-- ============================================================
+         MÓDULO: MODO SIMPLE MÓVIL — BARRA INFERIOR + PRESETS
+         ============================================================ -->
+
+    <!-- Strip de presets rápidos (modo simple móvil) -->
+    <div class="mobile-presets-strip" id="mobilePresetsStrip">
+        <button class="mobile-preset-btn active" data-preset="pigmento_rojo" onclick="applyMobilePreset('pigmento_rojo', this)">
+            <span class="preset-emoji">🎨</span>
+            <span>Rojo</span>
+        </button>
+        <button class="mobile-preset-btn" data-preset="rojo_degradado" onclick="applyMobilePreset('rojo_degradado', this)">
+            <span class="preset-emoji">🦬</span>
+            <span>Rojo deg.</span>
+        </button>
+        <button class="mobile-preset-btn" data-preset="blanco" onclick="applyMobilePreset('blanco', this)">
+            <span class="preset-emoji">⚪</span>
+            <span>Blanco</span>
+        </button>
+        <button class="mobile-preset-btn" data-preset="carbon" onclick="applyMobilePreset('carbon', this)">
+            <span class="preset-emoji">⚫</span>
+            <span>Carbón</span>
+        </button>
+        <button class="mobile-preset-btn" data-preset="grabados" onclick="applyMobilePreset('grabados', this)">
+            <span class="preset-emoji">🟤</span>
+            <span>Grabados</span>
+        </button>
+        <button class="mobile-preset-btn" data-preset="erosionada" onclick="applyMobilePreset('erosionada', this)">
+            <span class="preset-emoji">🌧</span>
+            <span>Erosión</span>
+        </button>
+    </div>
+
+    <!-- Barra inferior fija (modo simple móvil) -->
+    <div class="mobile-simple-bar" id="mobileSimpleBar">
+        <button class="bar-btn primary" id="mobileBarLeftBtn" onclick="switchToProMode()">🔬 Profesional</button>
+        <button class="bar-btn success" onclick="openExportSheet()">💾 Exportar</button>
+    </div>
+
+    <!-- ============================================================
+         MÓDULO: BOTTOM SHEET DE EXPORTACIÓN (MÓVIL)
+         ============================================================ -->
+    <div class="export-sheet-overlay" id="exportSheetOverlay" onclick="closeExportSheet()"></div>
+    <div class="export-sheet" id="exportSheet">
+        <div class="export-sheet-handle" onclick="closeExportSheet()"></div>
+        <div class="export-sheet-title">Exportar resultado</div>
+
+        <input type="text" class="export-project-input" id="mobileExportName" placeholder="Nombre del proyecto (vacío = auto-fecha)">
+
+        <div class="export-option-group">
+            <label class="export-option-label">Modo de salida</label>
+            <select class="export-option-select" id="mobileExportMode">
+                <option value="processed">Imagen procesada</option>
+                <option value="original">Imagen original</option>
+                <option value="combined">Original + procesada</option>
+            </select>
+        </div>
+
+        <div class="export-option-group">
+            <label class="export-option-label">Formato</label>
+            <select class="export-option-select" id="mobileExportFormat">
+                <option value="image/png">PNG (sin pérdidas)</option>
+                <option value="image/jpeg">JPEG HD (98%)</option>
+            </select>
+        </div>
+
+        <div class="export-toggle-row" onclick="toggleMobileExport('img')">
+            <div class="export-toggle-text">
+                Archivo gráfico
+                <span class="export-toggle-sub">.png o .jpg según formato</span>
+            </div>
+            <div class="toggle-switch active" id="mobileToggleImg"></div>
+        </div>
+
+        <div class="export-toggle-row" onclick="toggleMobileExport('json')">
+            <div class="export-toggle-text">
+                Parámetros de procesamiento
+                <span class="export-toggle-sub">.json con metadatos técnicos</span>
+            </div>
+            <div class="toggle-switch active" id="mobileToggleJson"></div>
+        </div>
+
+        <div class="export-toggle-row" onclick="toggleMobileExport('geo')">
+            <div class="export-toggle-text">
+                Georreferenciación GPS
+                <span class="export-toggle-sub">Incrustar coordenadas</span>
+            </div>
+            <div class="toggle-switch" id="mobileToggleGeo"></div>
+        </div>
+
+        <button class="export-btn-main" onclick="executeMobileExport()">💾 Exportar archivos</button>
+    </div>
+
+</body>
+</html>
