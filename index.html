@@ -307,7 +307,7 @@
         
         .btn-hold-view {
             background: #27272a; color: #ffffff; border: 1px solid #3f3f46;
-            font-weight: 700; cursor: pointer; padding: 14px; font-size: 0.88rem;
+            font-weight: 700; cursor: pointer; padding: 14px; font-size: 0.9rem;
             letter-spacing: 0.5px; border-radius: 8px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
             width: 100%; box-sizing: border-box; text-align: center;
         }
@@ -476,9 +476,10 @@
             </div>
 
             <div class="image-group-buttons">
-                <div class="grid-2" style="margin-bottom: 8px;">
-                    <button id="holdViewBtn" class="btn-hold-view">👁️ VER ORIGINAL</button>
-                    <button id="cleanScreenBtn" style="background:#3f3f46; font-weight:700; font-size:0.85rem; padding:14px; color:#fff; border:1px solid var(--border); border-radius:8px; cursor:pointer;">📱 PANTALLA LIMPIA</button>
+                <!-- SECCIÓN REUBICADA: "Mantén pulsado" y "Pantalla limpia" juntos bajo el visor -->
+                <div class="grid-2" style="margin-bottom: 10px;">
+                    <button id="holdViewBtn" class="btn-hold-view">👁️ MANTÉN PULSADO PARA VER EL ORIGINAL</button>
+                    <button id="cleanScreenBtn" style="background:#3f3f46; color:#ffffff; border: 1px solid #3f3f46; font-weight:700; cursor:pointer; padding:14px; font-size:0.85rem; letter-spacing:0.5px; border-radius:8px; text-align:center;">📱 PANTALLA LIMPIA</button>
                 </div>
 
                 <div class="grid-2">
@@ -526,7 +527,7 @@
                     <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Explicación para usuarios</div>
                     <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Permite delimitar la morfología de grabados rupestres someros, piqueteados o incisiones en micro-relieve sobre piedra.</p>
                     <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Limitaciones</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Resalta de manera indiscriminate grietas geológicas naturales, líquenes, exfoliaciones y ruido de textura. No diferencia automáticamente entre la acción antrópica y las alterations del soporte.</p>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Resalta de manera indiscriminate grietas geológicas naturales, líquenes, exfoliaciones y ruido de textura. No diferencia automáticamente entre la acción antrópica y las alteraciones del soporte.</p>
                 </div>
 
                 <div class="manual-card">
@@ -604,7 +605,7 @@
 
             <div class="control-group" style="margin-top: 6px;">
                 <label class="setting-label" id="labelIntensity">Intensidad del estiramiento PCA</label>
-                <input type="range" id="intensitySlider" min="5" max="250" value="75">
+                <input type="range" id="intensitySlider" min="5" max="250" value="70">
                 <p id="pcaHelpText" style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0 0 0; line-height: 1.3;">
                     Controla cuánto se amplifican las diferencias cromáticas obtenidas mediante PCA.<br>
                     Valores elevados también pueden aumentar el ruido.
@@ -738,7 +739,9 @@
             <div id="metadataDisplay" class="metadata-box hidden" aria-live="polite">Esperando coordenadas...</div>
             <button id="btnCopyGPS" class="hidden" style="padding:8px; font-size:0.72rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:6px; cursor:pointer;">📋 Copiar coordenadas</button>
 
-            <button id="saveBtn" class="btn-success" style="font-size:0.88rem; padding:12px; margin-top:6px; font-weight:700;">💾 EXPORTAR ARCHIVOS</button>
+            <div style="margin-top:4px; border-top:1px solid var(--border); padding-top:10px;">
+                <button id="saveBtn" class="btn-success" style="font-size:0.85rem; padding:12px; width:100%;">💾 EXPORTAR ARCHIVOS</button>
+            </div>
         </div>
 
         <div class="controls-card" style="border-left: 3px solid var(--success);">
@@ -1492,16 +1495,15 @@
             isHoldingOriginal: false,
             offscreenCanvas: null, 
 
-            // Presets recalibrados para realce potente (estilo DStretch Jon Harman)
             presets: {
-                rojo_oxido:           { filter: 'yre', intensity: 75, black: 5, gamma: 95, white: 250 },
-                rojo_degradado:       { filter: 'ybr', intensity: 80, black: 10, gamma: 90, white: 245 },
-                amarillo_tenue:       { filter: 'yds', intensity: 65, black: 5, gamma: 100, white: 250 },
-                negro_carbon:         { filter: 'ybk', intensity: 70, black: 10, gamma: 100, white: 245 },
-                superposicion_colores:{ filter: 'pca_rgb', intensity: 70, black: 0, gamma: 100, white: 255 },
-                grabados_relieve:     { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
-                textura_erosionada:   { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
-                alto_contraste:       { filter: 'crgb', intensity: 80, black: 10, gamma: 95, white: 245 }
+                rojo_oxido:           { filter: 'yre', intensity: 15, black: 0, gamma: 100, white: 255 },
+				rojo_degradado:       { filter: 'ybr', intensity: 15, black: 0, gamma: 100, white: 255 },
+				amarillo_tenue:       { filter: 'yds', intensity: 15, black: 0, gamma: 100, white: 255 },
+				negro_carbon:         { filter: 'ybk', intensity: 15, black: 0, gamma: 100, white: 255 },
+				superposicion_colores:{ filter: 'lab', intensity: 15, black: 0, gamma: 100, white: 255 },
+				grabados_relieve:     { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
+				textura_erosionada:   { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
+				alto_contraste:       { filter: 'crgb', intensity: 15, black: 10, gamma: 95, white: 245 }
             },
 
             init() {
