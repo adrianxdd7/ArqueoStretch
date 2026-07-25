@@ -476,10 +476,8 @@
             </div>
 
             <div class="image-group-buttons">
-                <!-- SECCIÓN REUBICADA: "Mantén pulsado" y "Pantalla limpia" juntos bajo el visor -->
-                <div class="grid-2" style="margin-bottom: 10px;">
+                <div class="control-group" style="margin-bottom: 10px;">
                     <button id="holdViewBtn" class="btn-hold-view">👁️ MANTÉN PULSADO PARA VER EL ORIGINAL</button>
-                    <button id="cleanScreenBtn" style="background:#3f3f46; color:#ffffff; border: 1px solid #3f3f46; font-weight:700; cursor:pointer; padding:14px; font-size:0.85rem; letter-spacing:0.5px; border-radius:8px; text-align:center;">📱 PANTALLA LIMPIA</button>
                 </div>
 
                 <div class="grid-2">
@@ -739,8 +737,9 @@
             <div id="metadataDisplay" class="metadata-box hidden" aria-live="polite">Esperando coordenadas...</div>
             <button id="btnCopyGPS" class="hidden" style="padding:8px; font-size:0.72rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:6px; cursor:pointer;">📋 Copiar coordenadas</button>
 
-            <div style="margin-top:4px; border-top:1px solid var(--border); padding-top:10px;">
-                <button id="saveBtn" class="btn-success" style="font-size:0.85rem; padding:12px; width:100%;">💾 EXPORTAR ARCHIVOS</button>
+            <div class="grid-2" style="margin-top:4px; border-top:1px solid var(--border); padding-top:10px;">
+                <button id="cleanScreenBtn" style="background:#3f3f46; font-weight:600; font-size:0.82rem; padding:10px; color:#fff; border:none; border-radius:8px; cursor:pointer;">📱 PANTALLA LIMPIA</button>
+                <button id="saveBtn" class="btn-success" style="font-size:0.82rem; padding:10px;">💾 EXPORTAR ARCHIVOS</button>
             </div>
         </div>
 
@@ -1121,6 +1120,8 @@
 
                 this.card.addEventListener('touchstart', (e) => {
                     if (e.touches.length === 1) {
+                        // Solo se bloquea el scroll de la página si de verdad vamos a hacer pan
+                        // (imagen ampliada y no estamos dibujando una selección de zona).
                         if (this.scale > 1 && !(typeof RoiSelector !== 'undefined' && RoiSelector.drawMode)) {
                             e.preventDefault();
                         }
@@ -1130,7 +1131,7 @@
 
                 this.card.addEventListener('touchmove', (e) => {
                     if (this.isPanning && e.touches.length === 1) {
-                        e.preventDefault();
+                        e.preventDefault(); // evita que la página se desplace mientras se arrastra la imagen
                         this.onMove(e.touches[0].clientX, e.touches[0].clientY);
                     }
                 }, { passive: false });
@@ -1167,6 +1168,9 @@
             },
 
             zoomAtPoint(factor, clientX, clientY) {
+                // Si se está dibujando una selección de zona, el zoom queda bloqueado: cambiar de
+                // escala en mitad del dibujo desincronizaría las coordenadas de la selección con
+                // los píxeles reales de la imagen.
                 if (typeof RoiSelector !== 'undefined' && RoiSelector.drawMode) return;
 
                 const rect = this.card.getBoundingClientRect();
