@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ArqueoStretch</title>
     <style>
         /* Asegurar cálculo uniforme del modelo de caja en todo el documento */
@@ -34,19 +34,26 @@
             align-items: center;
             min-height: 100vh;
             box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
         }
 
-        button, .panel, .controls-card, .histogram-container, .viewer-card, select, input, textarea, .image-workshop-card {
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-        }
-
+        /* Solo los botones bloquean la selección (evita el resaltado accidental al tocar),
+           el resto del contenido (texto explicativo, campos de código, GPS) queda seleccionable
+           para que el usuario pueda copiarlo. */
         button {
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
             touch-action: manipulation;
+        }
+
+        /* Foco visible reforzado para navegación por teclado sobre controles personalizados */
+        button:focus-visible,
+        select:focus-visible,
+        input:focus-visible,
+        textarea:focus-visible,
+        .tab-btn:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 2px;
         }
 
         .container {
@@ -365,622 +372,6 @@
                 height: calc(100vh - 90px); /* Maximiza el viewport analítico de la imagen con barra horizontal */
             }
         }
-    
-        /* ============================================================
-           MÓDULO: INTERACCIÓN GESTUAL + AJUSTE ENFOCADO (B+C)
-           ============================================================ */
-
-        .gesture-layer {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 10;
-            touch-action: none;
-            cursor: grab;
-        }
-        .gesture-layer:active { cursor: grabbing; }
-
-        .gesture-badge {
-            position: absolute;
-            top: 12px; left: 12px;
-            background: rgba(0,0,0,0.75);
-            color: #fff;
-            font-size: 13px;
-            font-weight: 500;
-            padding: 6px 12px;
-            border-radius: 8px;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.15s ease-out;
-            z-index: 20;
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            font-variant-numeric: tabular-nums;
-            backdrop-filter: blur(4px);
-        }
-
-        .gesture-hint {
-            position: absolute;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.7);
-            color: #fff;
-            font-size: 11px;
-            padding: 8px 14px;
-            border-radius: 8px;
-            pointer-events: none;
-            text-align: center;
-            line-height: 1.4;
-            opacity: 1;
-            transition: opacity 0.4s ease-out;
-            z-index: 20;
-        }
-
-        /* Modo Precisión (C): overlay sobre la imagen */
-        .precision-overlay {
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(9,9,11,0.92);
-            z-index: 30;
-            display: flex;
-            flex-direction: column;
-            padding: 16px;
-            gap: 12px;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.2s ease-out;
-        }
-        .precision-overlay.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .precision-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .precision-title {
-            font-size: 14px;
-            font-weight: 600;
-            color: var(--text-main);
-        }
-
-        .precision-close {
-            background: #27272a;
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            width: 32px; height: 32px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        .precision-chips {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .precision-chip {
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: #1e1e20;
-            color: var(--text-muted);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            font-family: inherit;
-        }
-        .precision-chip.active {
-            background: var(--accent);
-            color: #fff;
-            border-color: var(--accent);
-        }
-
-        .precision-slider-area {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        .precision-label-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .precision-label {
-            font-size: 13px;
-            color: var(--text-muted);
-        }
-
-        .precision-value {
-            font-size: 24px;
-            font-weight: 600;
-            color: var(--text-main);
-            font-variant-numeric: tabular-nums;
-        }
-
-        .precision-slider {
-            width: 100%;
-            height: 40px;
-            -webkit-appearance: none;
-            appearance: none;
-            background: transparent;
-        }
-        .precision-slider::-webkit-slider-runnable-track {
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-        }
-        .precision-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 22px; height: 22px;
-            background: var(--text-main);
-            border-radius: 50%;
-            margin-top: -9px;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-        }
-        .precision-slider::-moz-range-track {
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-        }
-        .precision-slider::-moz-range-thumb {
-            width: 22px; height: 22px;
-            background: var(--text-main);
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.4);
-        }
-
-        /* Bottom sheet mejorado (A) */
-        .bottom-sheet {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: var(--bg-card);
-            border-radius: 16px 16px 0 0;
-            padding: 12px 16px 20px;
-            box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
-            z-index: 15;
-            transition: transform 0.3s ease-out;
-        }
-        .bottom-sheet.collapsed {
-            transform: translateY(calc(100% - 48px));
-        }
-        .bottom-sheet-handle {
-            width: 36px; height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-            margin: 0 auto 12px;
-            cursor: pointer;
-        }
-
-        .sheet-preset-scroll {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 4px;
-            -webkit-overflow-scrolling: touch;
-        }
-        .sheet-preset-scroll::-webkit-scrollbar { display: none; }
-
-        .sheet-preset-btn {
-            flex-shrink: 0;
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: #1e1e20;
-            color: var(--text-muted);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
-            font-family: inherit;
-        }
-        .sheet-preset-btn:active {
-            background: #27272a;
-        }
-
-        .sheet-action-row {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        .sheet-action-btn {
-            flex: 1;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: #1e1e20;
-            color: var(--text-main);
-            font-size: 13px;
-            font-weight: 600;
-            cursor: pointer;
-            font-family: inherit;
-        }
-        .sheet-action-btn.primary {
-            background: var(--accent);
-            color: #fff;
-            border-color: var(--accent);
-        }
-
-        /* Indicador de modo activo en la imagen */
-        .mode-indicator {
-            position: absolute;
-            top: 12px; right: 12px;
-            background: rgba(0,0,0,0.6);
-            color: var(--text-muted);
-            font-size: 10px;
-            padding: 4px 10px;
-            border-radius: 6px;
-            pointer-events: none;
-            z-index: 5;
-            backdrop-filter: blur(4px);
-        }
-
-        /* Animación de pulso para el hint */
-        @keyframes pulse-hint {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.6; }
-        }
-        .gesture-hint.pulsing {
-            animation: pulse-hint 2s ease-in-out infinite;
-        }
-
-        /* En desktop, ocultar capa gestual y mostrar controles normales */
-        @media (min-width: 601px) {
-            .gesture-layer, .gesture-badge, .gesture-hint, .bottom-sheet, .mode-indicator {
-                display: none !important;
-            }
-            .precision-overlay { display: none !important; }
-        }
-        @media (max-width: 600px) {
-            #holdViewBtn { display: none !important; }
-            .image-group-buttons .grid-2 { display: none !important; }
-        }
-
-    
-        /* ============================================================
-           MÓDULO: MODO SIMPLE MÓVIL — DISEÑO TIPO DS STRETCH
-           ============================================================ */
-
-        /* Barra inferior fija del modo simple */
-        .mobile-simple-bar {
-            display: none;
-        }
-
-        /* Presets rápidos tipo DS Stretch */
-        .mobile-presets-strip {
-            display: none;
-        }
-
-        /* Bottom sheet de exportación */
-        .export-sheet {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            background: var(--bg-card);
-            border-radius: 20px 20px 0 0;
-            padding: 16px 20px 28px;
-            box-shadow: 0 -8px 32px rgba(0,0,0,0.5);
-            z-index: 100;
-            transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
-            max-height: 85vh;
-            overflow-y: auto;
-        }
-        .export-sheet.active {
-            transform: translateY(0);
-        }
-        .export-sheet-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.6);
-            z-index: 99;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-        .export-sheet-overlay.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-        .export-sheet-handle {
-            width: 40px; height: 5px;
-            background: var(--border);
-            border-radius: 3px;
-            margin: 0 auto 16px;
-        }
-        .export-sheet-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 16px;
-            text-align: center;
-        }
-        .export-option-group {
-            margin-bottom: 16px;
-        }
-        .export-option-label {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 8px;
-            display: block;
-        }
-        .export-option-select {
-            width: 100%;
-            padding: 14px 16px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: #1e1e20;
-            color: var(--text-main);
-            font-size: 15px;
-            font-family: inherit;
-            appearance: none;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 16px center;
-        }
-        .export-toggle-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 12px 0;
-            border-bottom: 1px solid var(--border);
-        }
-        .export-toggle-row:last-child {
-            border-bottom: none;
-        }
-        .export-toggle-text {
-            flex: 1;
-            font-size: 14px;
-            color: var(--text-main);
-        }
-        .export-toggle-sub {
-            font-size: 12px;
-            color: var(--text-muted);
-            display: block;
-            margin-top: 2px;
-        }
-        /* Toggle switch */
-        .toggle-switch {
-            width: 48px;
-            height: 28px;
-            background: #3f3f46;
-            border-radius: 14px;
-            position: relative;
-            cursor: pointer;
-            transition: background 0.2s ease;
-            flex-shrink: 0;
-        }
-        .toggle-switch.active {
-            background: var(--accent);
-        }
-        .toggle-switch::after {
-            content: '';
-            position: absolute;
-            width: 24px; height: 24px;
-            background: #fff;
-            border-radius: 50%;
-            top: 2px; left: 2px;
-            transition: transform 0.2s ease;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-        }
-        .toggle-switch.active::after {
-            transform: translateX(20px);
-        }
-        .export-btn-main {
-            width: 100%;
-            padding: 16px;
-            border-radius: 12px;
-            border: none;
-            background: var(--success);
-            color: #fff;
-            font-size: 16px;
-            font-weight: 700;
-            cursor: pointer;
-            margin-top: 8px;
-            font-family: inherit;
-        }
-        .export-btn-main:active {
-            opacity: 0.85;
-        }
-        .export-project-input {
-            width: 100%;
-            padding: 14px 16px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            background: #1e1e20;
-            color: var(--text-main);
-            font-size: 15px;
-            font-family: inherit;
-            margin-bottom: 12px;
-            box-sizing: border-box;
-        }
-
-        /* Solo en móvil */
-        @media (max-width: 600px) {
-            /* Ocultar controles del modo simple desktop */
-            body:not(.lab-mode) #wrapperSimple,
-            body:not(.lab-mode) #exportZone,
-            body:not(.lab-mode) #configLibraryCard,
-            body:not(.lab-mode) #histogramUI,
-            body:not(.lab-mode) #toggleManualBtn,
-            body:not(.lab-mode) #manualPanel,
-            body:not(.lab-mode) .telemetry-panel {
-                display: none !important;
-            }
-
-            /* Mostrar barra inferior del modo simple */
-            body:not(.lab-mode) .mobile-simple-bar {
-                display: flex !important;
-            }
-            body:not(.lab-mode) .mobile-presets-strip {
-                display: flex !important;
-            }
-
-            /* Ajustar viewer para modo simple */
-            body:not(.lab-mode) .viewer-card {
-                aspect-ratio: auto;
-                flex: 1;
-                min-height: 0;
-            }
-            body:not(.lab-mode) .image-workshop-card {
-                flex: 1;
-                min-height: 0;
-                display: flex;
-                flex-direction: column;
-                gap: 0;
-                padding: 0;
-                border: none;
-                background: transparent;
-            }
-            body:not(.lab-mode) #mainContainer {
-                gap: 0;
-                height: 100vh;
-                padding: 0;
-            }
-            body:not(.lab-mode) header {
-                display: none !important;
-            }
-            body:not(.lab-mode) .tabs-wrapper {
-                display: none !important;
-            }
-            body:not(.lab-mode) body {
-                padding: 0;
-            }
-
-            /* Barra inferior fija */
-            .mobile-simple-bar {
-                position: fixed;
-                bottom: 0; left: 0; right: 0;
-                background: var(--bg-card);
-                border-top: 1px solid var(--border);
-                padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-                display: none;
-                justify-content: space-between;
-                align-items: center;
-                gap: 12px;
-                z-index: 50;
-            }
-            .mobile-simple-bar .bar-btn {
-                padding: 12px 20px;
-                border-radius: 10px;
-                border: 1px solid var(--border);
-                background: #1e1e20;
-                color: var(--text-main);
-                font-size: 14px;
-                font-weight: 600;
-                cursor: pointer;
-                font-family: inherit;
-                flex: 1;
-                text-align: center;
-            }
-            .mobile-simple-bar .bar-btn.primary {
-                background: var(--accent);
-                color: #fff;
-                border-color: var(--accent);
-            }
-            .mobile-simple-bar .bar-btn.success {
-                background: var(--success);
-                color: #fff;
-                border-color: var(--success);
-            }
-
-            /* Strip de presets */
-            .mobile-presets-strip {
-                display: none;
-                padding: 12px 16px 16px;
-                gap: 10px;
-                overflow-x: auto;
-                -webkit-overflow-scrolling: touch;
-                background: var(--bg-card);
-                border-top: 1px solid var(--border);
-            }
-            .mobile-presets-strip::-webkit-scrollbar {
-                display: none;
-            }
-            .mobile-preset-btn {
-                flex-shrink: 0;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 6px;
-                padding: 12px 16px;
-                min-width: 72px;
-                border-radius: 14px;
-                border: 1px solid var(--border);
-                background: #1e1e20;
-                color: var(--text-main);
-                font-size: 11px;
-                font-weight: 600;
-                cursor: pointer;
-                font-family: inherit;
-                transition: all 0.15s ease;
-            }
-            .mobile-preset-btn:active {
-                background: #27272a;
-                transform: scale(0.96);
-            }
-            .mobile-preset-btn.active {
-                background: var(--accent);
-                border-color: var(--accent);
-                color: #fff;
-            }
-            .mobile-preset-btn .preset-emoji {
-                font-size: 24px;
-                line-height: 1;
-            }
-
-            /* Ocultar cosas del modo profesional en modo simple */
-            body:not(.lab-mode) .bottom-sheet {
-                display: none !important;
-            }
-            body:not(.lab-mode) .gesture-hint {
-                bottom: 140px !important;
-            }
-        }
-
-        /* Modo profesional móvil: mostrar B+C+A */
-        @media (max-width: 600px) {
-            body.lab-mode .mobile-simple-bar,
-            body.lab-mode .mobile-presets-strip {
-                display: none !important;
-            }
-            body.lab-mode #wrapperSimple {
-                display: none !important;
-            }
-        }
-
-    
-        /* Clean screen en móvil: ocultar todo */
-        @media (max-width: 600px) {
-            body.clean-screen .mobile-simple-bar,
-            body.clean-screen .mobile-presets-strip,
-            body.clean-screen .bottom-sheet {
-                display: none !important;
-            }
-            body.clean-screen .viewer-card {
-                height: 100vh !important;
-            }
-            body.clean-screen .image-workshop-card {
-                height: 100vh !important;
-            }
-        }
-
     </style>
 </head>
 <body>
@@ -989,6 +380,7 @@
         <header>
             <h1>ArqueoStretch</h1>
             <p>Herramienta modular para el realce y análisis de pinturas rupestres</p>
+            <p id="versionLabel" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; opacity: 0.7;">v1.2.0</p>
         </header>
 
         <div class="tabs-wrapper">
@@ -998,68 +390,9 @@
 
         <div class="image-workshop-card" id="imageWorkshopCard">
             <div class="viewer-card" id="viewerCard">
-                <video id="videoPreview" autoplay playsinline muted></video>
-                <canvas id="canvasView" class="hidden"></canvas>
-
-                <!-- Capa gestual (B) -->
-                <div id="gestureLayer" class="gesture-layer hidden"></div>
-
-                <!-- Badge de valor flotante -->
-                <div id="gestureBadge" class="gesture-badge">Intensidad: 70</div>
-
-                <!-- Hint inicial -->
-                <div id="gestureHint" class="gesture-hint pulsing">
-                    ← desliza horizontal → intensidad<br>
-                    doble-tap para precisión
-                </div>
-
-                <!-- Indicador de modo -->
-                <div id="modeIndicator" class="mode-indicator">PCA RGB · Intensidad 70</div>
-
-                <!-- Modo Precisión (C) -->
-                <div id="precisionOverlay" class="precision-overlay">
-                    <div class="precision-header">
-                        <span class="precision-title">Ajuste preciso</span>
-                        <button class="precision-close" onclick="exitPrecisionMode()">✕</button>
-                    </div>
-                    <div class="precision-chips" id="precisionChips">
-                        <button class="precision-chip active" data-param="intensity" onclick="selectPrecisionParam('intensity')">Intensidad</button>
-                        <button class="precision-chip" data-param="black" onclick="selectPrecisionParam('black')">Negro</button>
-                        <button class="precision-chip" data-param="gamma" onclick="selectPrecisionParam('gamma')">Gamma</button>
-                        <button class="precision-chip" data-param="white" onclick="selectPrecisionParam('white')">Blanco</button>
-                    </div>
-                    <div class="precision-slider-area">
-                        <div class="precision-label-row">
-                            <span class="precision-label" id="precisionLabel">Intensidad del estiramiento</span>
-                            <span class="precision-value" id="precisionValue">70</span>
-                        </div>
-                        <input type="range" class="precision-slider" id="precisionSlider" 
-                               min="5" max="250" value="70" 
-                               oninput="onPrecisionInput(this.value)">
-                    </div>
-                </div>
-
-                <!-- Bottom Sheet (A) -->
-                <div id="bottomSheet" class="bottom-sheet">
-                    <div class="bottom-sheet-handle" onclick="toggleSheet()"></div>
-                    <div class="sheet-preset-scroll">
-                        <button class="sheet-preset-btn" onclick="quickPreset('pigmento_rojo')">🎨 Rojo</button>
-                        <button class="sheet-preset-btn" onclick="quickPreset('rojo_degradado')">🦬 Rojo deg.</button>
-                        <button class="sheet-preset-btn" onclick="quickPreset('blanco')">⚪ Blanco</button>
-                        <button class="sheet-preset-btn" onclick="quickPreset('carbon')">⚫ Carbón</button>
-                        <button class="sheet-preset-btn" onclick="quickPreset('grabados')">🟤 Grabados</button>
-                        <button class="sheet-preset-btn" onclick="quickPreset('erosionada')">🌧 Erosión</button>
-                    </div>
-                    <div class="sheet-action-row">
-                        <button class="sheet-action-btn" id="sheetHoldBtn" 
-                                ontouchstart="startSheetHold(event)" 
-                                ontouchend="endSheetHold(event)"
-                                onmousedown="startSheetHold(event)" 
-                                onmouseup="endSheetHold(event)"
-                                onmouseleave="endSheetHold(event)">👁️ Original</button>
-                        <button class="sheet-action-btn primary" onclick="enterPrecisionMode()">⚙️ Precisión</button>
-                    </div>
-                </div>
+                <video id="videoPreview" autoplay playsinline muted aria-label="Vista previa en directo de la cámara"></video>
+                <canvas id="canvasView" class="hidden" role="img" aria-label="Vista previa de la imagen procesada en tiempo real"></canvas>
+                <div id="roiOverlay" class="hidden" style="position:absolute; border:2px dashed #22c55e; background:rgba(34,197,94,0.15); pointer-events:none; box-sizing:border-box;"></div>
             </div>
 
             <div class="image-group-buttons">
@@ -1130,7 +463,7 @@
         <div id="wrapperProfesional" class="hidden"></div>
 
         <div id="wrapperSimple" class="controls-card">
-            <label class="setting-label">Presets de Análisis Rápido</label>
+            <label class="setting-label" for="presetSelect">Presets de Análisis Rápido</label>
             <select id="presetSelect">
                 <option value="pigmento_rojo">🎨 Pigmento rojo tenue (óxidos de hierro)</option>
                 <option value="rojo_degradado">🦬 Pintura roja degradada (fina o lavada)</option>
@@ -1143,7 +476,7 @@
             </select>
 
             <div class="control-group" style="margin-top: 8px;">
-                <label class="setting-label">⭐ Mis presets guardados</label>
+                <label class="setting-label" for="favSelectSimple">⭐ Mis presets guardados</label>
                 <div class="fav-row">
                     <select id="favSelectSimple">
                         <option value="">-- Usar una configuración guardada --</option>
@@ -1156,7 +489,7 @@
         <div class="controls-card pro-card" id="proCardProcessing">
             <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">1. Configuración del procesamiento</label>
             <div class="control-group">
-                <label class="setting-label">Algoritmo de procesamiento seleccionado</label>
+                <label class="setting-label" for="filterSelect">Algoritmo de procesamiento seleccionado</label>
                 <select id="filterSelect">
                     <option value="pca_rgb">PCA Stretch estándar (Matriz sRGB Lineal)</option>
                     <option value="yuv_stretch">PCA Stretch en espacio de color YCbCr (BT.601)</option>
@@ -1164,7 +497,22 @@
                     <option value="unsharp_mask">Realce de micro-textura: Unsharp Mask (GPU)</option>
                 </select>
             </div>
-            
+
+            <div class="control-group" id="roiControlGroup" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
+                <label class="setting-label" style="color:var(--text-main);">🎯 Ajustar el cálculo de color a una zona (como en DStretch)</label>
+                <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0 0 6px 0; line-height: 1.3;">
+                    Dibuja un recuadro solo sobre la pintura para que el PCA calcule los colores a partir de esa zona, en vez de toda la foto. Suele separar mucho mejor el pigmento del soporte. Solo afecta a los modos PCA Stretch (RGB / YCbCr).
+                </p>
+                <div class="grid-2">
+                    <button id="roiSelectModeBtn" type="button" aria-pressed="false" style="padding:10px; font-size:0.8rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">🖊️ Dibujar selección</button>
+                    <button id="roiClearBtn" type="button" style="padding:10px; font-size:0.8rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">🗑️ Quitar selección</button>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                    <input type="checkbox" id="useRoiCheck" disabled style="width:16px; height:16px;">
+                    <label for="useRoiCheck" style="font-size:0.78rem; color:var(--text-main);">Usar la selección para calcular los colores</label>
+                </div>
+            </div>
+
             <div class="control-group" style="margin-top: 6px;">
                 <label class="setting-label" id="labelIntensity">Intensidad del estiramiento PCA</label>
                 <input type="range" id="intensitySlider" min="5" max="250" value="70">
@@ -1208,6 +556,13 @@
                         <button id="deleteFavBtnPro" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
                         <button id="saveFavBtn" style="padding:12px; background:#27272a; font-size:0.8rem; font-weight:600;">💾 Guardar actual</button>
                     </div>
+                    <div class="grid-2" style="margin-top: 8px;">
+                        <button id="exportLibraryBtn" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">📤 Exportar biblioteca</button>
+                        <label for="importLibraryInput" style="background:#27272a; text-align:center; cursor:pointer; padding:10px; border-radius:8px; font-size:0.78rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center;">
+                            📥 Importar biblioteca
+                            <input type="file" id="importLibraryInput" accept=".json" class="hidden">
+                        </label>
+                    </div>
                 </div>
             </div>
 
@@ -1222,6 +577,7 @@
                     <button id="btnGenerateCode" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">Generar código</button>
                     <button id="btnApplyCode" style="padding:10px; font-size:0.78rem; background:var(--accent); font-weight:600; color:#fff; border:none; border-radius:8px; cursor:pointer;">Aplicar código</button>
                 </div>
+                <button id="btnCopyCode" style="margin-top:4px; padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer; width:100%;">📋 Copiar código</button>
             </div>
 
             <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
@@ -1252,13 +608,13 @@
             <div class="simple-only"><label class="setting-label" style="color:var(--text-main);">Exportación final de datos</label></div>
             
             <div class="control-group">
-                <label class="setting-label">Nombre del proyecto / exportación</label>
+                <label class="setting-label" for="exportProjectName">Nombre del proyecto / exportación</label>
                 <input type="text" id="exportProjectName" placeholder="Ej. Abrigo_Cueva_Pintura1 (Vacío para Auto-Fecha)">
             </div>
 
             <div id="advancedExportSelectors" class="grid-2">
                 <div class="control-group">
-                    <label class="setting-label">Modo de salida</label>
+                    <label class="setting-label" for="exportFormatSelect">Modo de salida</label>
                     <select id="exportFormatSelect" style="padding:8px; font-size:0.8rem;">
                         <option value="processed">Imagen procesada completa</option>
                         <option value="original">Imagen original de entrada</option>
@@ -1266,7 +622,7 @@
                     </select>
                 </div>
                 <div class="control-group">
-                    <label class="setting-label">Formato de exportación</label>
+                    <label class="setting-label" for="formatSelect">Formato de exportación</label>
                     <select id="formatSelect" style="padding:8px; font-size:0.8rem;">
                         <option value="image/png">Formato PNG (Sin pérdidas)</option>
                         <option value="image/jpeg">Formato JPEG HD (98%)</option>
@@ -1290,7 +646,8 @@
                 <input type="checkbox" id="geoAuthCheck" style="width:18px; height:18px;">
                 <label for="geoAuthCheck" style="font-size:0.75rem; color:var(--text-muted);">Incrustar metadatos georreferenciales (GPS)</label>
             </div>
-            <div id="metadataDisplay" class="metadata-box hidden">Esperando coordenadas...</div>
+            <div id="metadataDisplay" class="metadata-box hidden" aria-live="polite">Esperando coordenadas...</div>
+            <button id="btnCopyGPS" class="hidden" style="padding:8px; font-size:0.72rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:6px; cursor:pointer;">📋 Copiar coordenadas</button>
 
             <div class="grid-2" style="margin-top:4px; border-top:1px solid var(--border); padding-top:10px;">
                 <button id="cleanScreenBtn" style="background:#3f3f46; font-weight:600; font-size:0.82rem; padding:10px; color:#fff; border:none; border-radius:8px; cursor:pointer;">📱 PANTALLA LIMPIA</button>
@@ -1299,7 +656,7 @@
         </div>
 
         <div class="telemetry-panel">
-            <div class="telemetry-row"><span>Estado de operación:</span><span id="telStatus" style="color:#22c55e;">Inicializando subsistemas...</span></div>
+            <div class="telemetry-row"><span>Estado de operación:</span><span id="telStatus" style="color:#22c55e;" aria-live="polite">Inicializando subsistemas...</span></div>
             <div class="telemetry-row"><span>Resolución nativa:</span><span id="telResolution">-</span></div>
             <div class="telemetry-row"><span>Tamaño en memoria:</span><span id="telSize">-</span></div>
         </div>
@@ -1312,6 +669,9 @@
     </div>
 
     <script>
+        // Fuente única de verdad para el número de versión (antes duplicado en dos sitios distintos)
+        const APP_VERSION = "1.2.0";
+
         const ImageLoader = {
             async processUploadedFile(file) {
                 if (!file || file.size === 0) throw new Error("Archivo vacío detectado.");
@@ -1388,7 +748,7 @@
 
             init(canvasElement) {
                 this.gl = canvasElement.getContext('webgl2', { alpha: false, antialias: false, powerPreference: "high-performance" });
-                if (!this.gl) throw new Error("WebGL2 no disponible en este dispositivo.");
+                if (!this.gl) throw new Error("WebGL2 no disponible en este dispositivo. Prueba con una versión reciente de Chrome, Firefox o Edge; en algunos navegadores antiguos o en modo ahorro de datos WebGL2 está desactivado.");
                 
                 const gl = this.gl;
                 const vs = this.compileShader(gl.VERTEX_SHADER, this.vertexShaderSource);
@@ -1557,6 +917,43 @@
                     UIController.updateStatus(`Preset "${name}" eliminado correctamente.`, "#22c55e");
                 }
             },
+            exportLibrary() {
+                const names = Object.keys(this.favorites);
+                if (names.length === 0) {
+                    UIController.updateStatus("No hay presets guardados que exportar.", "#eab308");
+                    return;
+                }
+                const payload = {
+                    "software": "ArqueoStretch",
+                    "version": APP_VERSION,
+                    "type": "favorites_library",
+                    "favorites": this.favorites
+                };
+                const blob = new Blob([JSON.stringify(payload, null, 4)], { type: "application/json" });
+                const link = document.createElement('a');
+                link.download = "arqueostretch_biblioteca_presets.json";
+                link.href = URL.createObjectURL(blob);
+                link.click();
+                URL.revokeObjectURL(link.href);
+                UIController.updateStatus(`Biblioteca exportada (${names.length} presets).`, "#22c55e");
+            },
+            async importLibrary(file) {
+                if (!file) return;
+                try {
+                    const text = await file.text();
+                    const data = JSON.parse(text);
+                    const incoming = (data && data.type === "favorites_library" && data.favorites) ? data.favorites : data;
+                    if (!incoming || typeof incoming !== 'object') throw new Error("El archivo no contiene una biblioteca válida.");
+                    const incomingNames = Object.keys(incoming);
+                    if (incomingNames.length === 0) throw new Error("El archivo no contiene presets.");
+                    this.favorites = { ...this.favorites, ...incoming };
+                    localStorage.setItem('arqueostretch_favs', JSON.stringify(this.favorites));
+                    this.updateDropdowns();
+                    UIController.updateStatus(`Biblioteca importada (${incomingNames.length} presets añadidos).`, "#22c55e");
+                } catch (err) {
+                    UIController.updateStatus("No se pudo importar la biblioteca: " + err.message, "#ef4444");
+                }
+            },
             updateDropdowns() {
                 const selectSimple = document.getElementById('favSelectSimple');
                 const selectPro = document.getElementById('favSelectPro');
@@ -1596,6 +993,154 @@
             }
         };
 
+        /**
+         * RoiSelector: permite al usuario dibujar un recuadro sobre la imagen (con ratón o dedo)
+         * para delimitar la zona a partir de la cual se calculan las estadísticas de color del PCA,
+         * replicando la selección de región de DStretch. Convierte las coordenadas de pantalla
+         * (que incluyen el "letterboxing" de object-fit: contain) a coordenadas reales de píxel
+         * de la imagen.
+         */
+        const RoiSelector = {
+            drawMode: false,
+            dragging: false,
+            startContainerPoint: null,
+            roi: null, // {x, y, w, h} en coordenadas de píxel de la imagen, o null si no hay selección
+
+            init() {
+                this.card = document.getElementById('viewerCard');
+                this.overlay = document.getElementById('roiOverlay');
+                this.modeBtn = document.getElementById('roiSelectModeBtn');
+                this.clearBtn = document.getElementById('roiClearBtn');
+                this.useCheck = document.getElementById('useRoiCheck');
+
+                this.modeBtn.addEventListener('click', () => this.toggleDrawMode());
+                this.clearBtn.addEventListener('click', () => this.clear());
+                this.useCheck.addEventListener('change', () => UIController.dispatchProcessing());
+
+                this.card.addEventListener('mousedown', (e) => this.onDown(e));
+                this.card.addEventListener('mousemove', (e) => this.onMove(e));
+                window.addEventListener('mouseup', (e) => this.onUp(e));
+                this.card.addEventListener('touchstart', (e) => this.onDown(e), { passive: false });
+                this.card.addEventListener('touchmove', (e) => this.onMove(e), { passive: false });
+                this.card.addEventListener('touchend', (e) => this.onUp(e), { passive: false });
+            },
+
+            toggleDrawMode() {
+                this.drawMode = !this.drawMode;
+                this.modeBtn.setAttribute('aria-pressed', String(this.drawMode));
+                this.modeBtn.style.background = this.drawMode ? 'var(--accent)' : '#27272a';
+                this.card.style.cursor = this.drawMode ? 'crosshair' : '';
+                UIController.updateStatus(
+                    this.drawMode ? "Dibuja un recuadro sobre la pintura en la imagen." : "Modo de selección desactivado.",
+                    "#2563eb"
+                );
+            },
+
+            clear() {
+                this.roi = null;
+                this.overlay.classList.add('hidden');
+                this.useCheck.checked = false;
+                this.useCheck.disabled = true;
+                UIController.updateStatus("Selección eliminada. Se usará toda la imagen para calcular los colores.", "#eab308");
+                UIController.dispatchProcessing();
+            },
+
+            getActiveRoi() {
+                return (this.useCheck && this.useCheck.checked && this.roi) ? this.roi : null;
+            },
+
+            // Elemento de imagen actualmente visible (cámara en directo o canvas procesado)
+            getImageElement() {
+                const canvas = document.getElementById('canvasView');
+                return canvas.classList.contains('hidden') ? document.getElementById('videoPreview') : canvas;
+            },
+
+            containerPoint(evt) {
+                const rect = this.card.getBoundingClientRect();
+                const point = (evt.touches && evt.touches[0]) || (evt.changedTouches && evt.changedTouches[0]) || evt;
+                return { x: point.clientX - rect.left, y: point.clientY - rect.top, rect };
+            },
+
+            // Deshace el "letterboxing" de object-fit: contain para convertir un punto de pantalla
+            // (relativo al contenedor) en coordenadas reales de píxel dentro de la imagen.
+            toImageCoords(containerX, containerY, rect) {
+                const el = this.getImageElement();
+                const imgW = el.videoWidth || el.width;
+                const imgH = el.videoHeight || el.height;
+                if (!imgW || !imgH) return null;
+
+                const boxW = rect.width, boxH = rect.height;
+                const imgRatio = imgW / imgH, boxRatio = boxW / boxH;
+                let renderW, renderH, offsetX, offsetY;
+                if (imgRatio > boxRatio) {
+                    renderW = boxW; renderH = boxW / imgRatio; offsetX = 0; offsetY = (boxH - renderH) / 2;
+                } else {
+                    renderH = boxH; renderW = boxH * imgRatio; offsetY = 0; offsetX = (boxW - renderW) / 2;
+                }
+                const x = (containerX - offsetX) / renderW * imgW;
+                const y = (containerY - offsetY) / renderH * imgH;
+                return { x: Math.max(0, Math.min(imgW, x)), y: Math.max(0, Math.min(imgH, y)) };
+            },
+
+            onDown(evt) {
+                if (!this.drawMode || !UIController.currentOriginalData) return;
+                evt.preventDefault();
+                this.dragging = true;
+                this.startContainerPoint = this.containerPoint(evt);
+                this.overlay.classList.remove('hidden');
+                this.overlay.style.left = this.startContainerPoint.x + 'px';
+                this.overlay.style.top = this.startContainerPoint.y + 'px';
+                this.overlay.style.width = '0px';
+                this.overlay.style.height = '0px';
+            },
+
+            onMove(evt) {
+                if (!this.dragging) return;
+                evt.preventDefault();
+                const p = this.containerPoint(evt);
+                const x0 = Math.min(this.startContainerPoint.x, p.x);
+                const y0 = Math.min(this.startContainerPoint.y, p.y);
+                this.overlay.style.left = x0 + 'px';
+                this.overlay.style.top = y0 + 'px';
+                this.overlay.style.width = Math.abs(p.x - this.startContainerPoint.x) + 'px';
+                this.overlay.style.height = Math.abs(p.y - this.startContainerPoint.y) + 'px';
+            },
+
+            onUp(evt) {
+                if (!this.dragging) return;
+                this.dragging = false;
+                const p = this.containerPoint(evt);
+                const rect = p.rect;
+
+                const x0screen = Math.min(this.startContainerPoint.x, p.x);
+                const y0screen = Math.min(this.startContainerPoint.y, p.y);
+                const x1screen = Math.max(this.startContainerPoint.x, p.x);
+                const y1screen = Math.max(this.startContainerPoint.y, p.y);
+
+                const c0 = this.toImageCoords(x0screen, y0screen, rect);
+                const c1 = this.toImageCoords(x1screen, y1screen, rect);
+                if (!c0 || !c1) { this.overlay.classList.add('hidden'); return; }
+
+                const roiW = c1.x - c0.x, roiH = c1.y - c0.y;
+                // Descarta selecciones minúsculas (probablemente un toque accidental)
+                if (roiW < 15 || roiH < 15) {
+                    this.overlay.classList.add('hidden');
+                    UIController.updateStatus("La selección es demasiado pequeña, inténtalo de nuevo.", "#eab308");
+                    return;
+                }
+
+                this.roi = { x: Math.round(c0.x), y: Math.round(c0.y), w: Math.round(roiW), h: Math.round(roiH) };
+                this.useCheck.disabled = false;
+                this.useCheck.checked = true;
+                this.drawMode = false;
+                this.modeBtn.setAttribute('aria-pressed', 'false');
+                this.modeBtn.style.background = '#27272a';
+                this.card.style.cursor = '';
+                UIController.updateStatus("Selección lista. Los colores se calcularán a partir de esa zona.", "#22c55e");
+                UIController.dispatchProcessing();
+            }
+        };
+
         const GPSManager = {
             telemetry: null,
             requestLocation() {
@@ -1617,7 +1162,7 @@
                 this.worker = new Worker('worker.js');
                 this.worker.onmessage = (e) => this.handleResponse(e);
             },
-            dispatch(originalData, filterValue, targetStd) {
+            dispatch(originalData, filterValue, targetStd, roi) {
                 if (!originalData) return;
 
                 if (filterValue === 'dog' || filterValue === 'unsharp_mask') {
@@ -1634,7 +1179,8 @@
                 
                 this.worker.postMessage({
                     imgData: { width: originalData.width, height: originalData.height, data: bufferCopy },
-                    filter: filterValue, targetStd: targetStd, version: this.imageVersion
+                    filter: filterValue, targetStd: targetStd, version: this.imageVersion,
+                    roi: roi || null
                 }, [bufferCopy.buffer]);
             },
             handleResponse(e) {
@@ -1705,7 +1251,7 @@
                     const activeAlg = UIController.isLabMode ? document.getElementById('filterSelect').value : UIController.currentAlgMode;
                     const jsonMetadata = {
                         "software": "ArqueoStretch",
-                        "version": "1.2.0",
+                        "version": APP_VERSION,
                         "processing": {
                             "algorithm": activeAlg,
                             "targetStd": parseFloat(document.getElementById('intensitySlider').value),
@@ -1717,6 +1263,23 @@
                         },
                         "date": new Date().toISOString()
                     };
+
+                    // Documenta qué zona de la imagen se usó para calcular los colores (si el usuario
+                    // usó la selección de área), para que el resultado sea reproducible.
+                    const activeRoi = RoiSelector.getActiveRoi();
+                    if (activeRoi) {
+                        jsonMetadata.processing.regionOfInterest = activeRoi;
+                    }
+
+                    // Antes esta casilla no incrustaba nada: se pedían y mostraban las coordenadas
+                    // pero nunca se guardaban en el archivo exportado. Ahora sí se incluyen si el
+                    // usuario activó "Incrustar metadatos georreferenciales (GPS)" y hay coordenadas disponibles.
+                    if (document.getElementById('geoAuthCheck').checked && GPSManager.telemetry) {
+                        jsonMetadata.geolocation = {
+                            "latitude": GPSManager.telemetry.lat,
+                            "longitude": GPSManager.telemetry.lon
+                        };
+                    }
 
                     const jsonBlob = new Blob([JSON.stringify(jsonMetadata, null, 4)], { type: "application/json" });
                     const jsonLink = document.createElement('a');
@@ -1753,9 +1316,9 @@
                 FavoritesManager.load();
                 this.setupEventListeners();
                 CameraController.init();
+                RoiSelector.init();
                 this.switchUIMode(false);
                 this.offscreenCanvas = document.createElement('canvas');
-                GestureController.init();
             },
 
             switchUIMode(toLab) {
@@ -1795,9 +1358,11 @@
                 if (filterValue === 'pca_rgb' || filterValue === 'yuv_stretch') {
                     labelIntensity.innerText = "Intensidad del estiramiento PCA";
                     document.getElementById('pcaHelpText').classList.remove('hidden');
+                    document.getElementById('roiControlGroup').classList.remove('hidden');
                 } else {
                     labelIntensity.innerText = "Intensidad del filtro seleccionado";
                     document.getElementById('pcaHelpText').classList.add('hidden');
+                    document.getElementById('roiControlGroup').classList.add('hidden');
                 }
             },
 
@@ -1820,7 +1385,7 @@
             generateShareableCode() {
                 const activeAlg = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
                 const configObj = {
-                    "v": "1.2.0",
+                    "v": APP_VERSION,
                     "alg": activeAlg,
                     "std": parseInt(document.getElementById('intensitySlider').value),
                     "b": parseInt(document.getElementById('sliderBlack').value),
@@ -1869,6 +1434,17 @@
 
                 document.getElementById('btnGenerateCode').addEventListener('click', () => this.generateShareableCode());
                 document.getElementById('btnApplyCode').addEventListener('click', () => this.applyShareableCode());
+                document.getElementById('btnCopyCode').addEventListener('click', async () => {
+                    const field = document.getElementById('shareCodeField');
+                    if (!field.value) { this.updateStatus("No hay ningún código que copiar.", "#ef4444"); return; }
+                    try {
+                        await navigator.clipboard.writeText(field.value);
+                        this.updateStatus("Código copiado al portapapeles.", "#22c55e");
+                    } catch (err) {
+                        field.select(); // alternativa si la API del portapapeles no está disponible
+                        this.updateStatus("Selecciona y copia el código manualmente.", "#f59e0b");
+                    }
+                });
 
                 // MANEJADOR DE EVENTOS PARA LA IMPORTACIÓN DEL ARCHIVO PARSEADO (.JSON)
                 document.getElementById('importJsonInput').addEventListener('change', (e) => {
@@ -1973,6 +1549,18 @@
                     this.requestWebGLRender();
                 };
 
+                // Repite startHold/endHold en keydown/keyup para que también funcione con teclado (Enter/Espacio),
+                // no solo con ratón o pantalla táctil.
+                const startHoldKey = (e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    if (e.repeat) return; // evita reiniciar en repetición automática de tecla mantenida
+                    startHold(e);
+                };
+                const endHoldKey = (e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    endHold(e);
+                };
+
                 const holdBtn = document.getElementById('holdViewBtn');
                 holdBtn.addEventListener('mousedown', startHold);
                 holdBtn.addEventListener('mouseup', endHold);
@@ -1980,6 +1568,9 @@
                 holdBtn.addEventListener('touchstart', startHold, { passive: false });
                 holdBtn.addEventListener('touchend', endHold, { passive: false });
                 holdBtn.addEventListener('touchcancel', endHold, { passive: false });
+                holdBtn.addEventListener('keydown', startHoldKey);
+                holdBtn.addEventListener('keyup', endHoldKey);
+                holdBtn.addEventListener('blur', endHold);
 
                 const cleanHoldBtn = document.getElementById('cleanHoldViewBtn');
                 cleanHoldBtn.addEventListener('mousedown', startHold);
@@ -1988,15 +1579,39 @@
                 cleanHoldBtn.addEventListener('touchstart', startHold, { passive: false });
                 cleanHoldBtn.addEventListener('touchend', endHold, { passive: false });
                 cleanHoldBtn.addEventListener('touchcancel', endHold, { passive: false });
+                cleanHoldBtn.addEventListener('keydown', startHoldKey);
+                cleanHoldBtn.addEventListener('keyup', endHoldKey);
+                cleanHoldBtn.addEventListener('blur', endHold);
 
                 document.getElementById('cleanScreenBtn').addEventListener('click', () => { document.body.classList.add('clean-screen'); });
                 document.getElementById('restoreScreenBtn').addEventListener('click', () => { document.body.classList.remove('clean-screen'); this.requestWebGLRender(); });
 
                 document.getElementById('geoAuthCheck').addEventListener('change', (e) => {
                     if (e.target.checked) {
+                        const confirmado = window.confirm(
+                            "Tu ubicación se usará solo para incluirla en el archivo exportado. " +
+                            "No se envía a ningún servidor: todo el procesamiento ocurre en tu dispositivo.\n\n" +
+                            "¿Quieres continuar?"
+                        );
+                        if (!confirmado) { e.target.checked = false; return; }
                         document.getElementById('metadataDisplay').classList.remove('hidden');
+                        document.getElementById('btnCopyGPS').classList.remove('hidden');
                         GPSManager.requestLocation();
-                    } else { document.getElementById('metadataDisplay').classList.add('hidden'); }
+                    } else {
+                        document.getElementById('metadataDisplay').classList.add('hidden');
+                        document.getElementById('btnCopyGPS').classList.add('hidden');
+                    }
+                });
+
+                document.getElementById('btnCopyGPS').addEventListener('click', async () => {
+                    if (!GPSManager.telemetry) { UIController.updateStatus("Aún no hay coordenadas disponibles.", "#ef4444"); return; }
+                    const text = `${GPSManager.telemetry.lat.toFixed(5)}, ${GPSManager.telemetry.lon.toFixed(5)}`;
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        UIController.updateStatus("Coordenadas copiadas al portapapeles.", "#22c55e");
+                    } catch (err) {
+                        UIController.updateStatus("No se pudieron copiar automáticamente. Selecciona el texto manualmente.", "#f59e0b");
+                    }
                 });
 
                 const saveFavBtn = document.getElementById('saveFavBtn');
@@ -2009,6 +1624,12 @@
                 document.getElementById('deleteFavBtnSimple').addEventListener('click', () => FavoritesManager.deleteSelected('favSelectSimple'));
                 const deleteFavBtnPro = document.getElementById('deleteFavBtnPro');
                 if (deleteFavBtnPro) deleteFavBtnPro.addEventListener('click', () => FavoritesManager.deleteSelected('favSelectPro'));
+
+                document.getElementById('exportLibraryBtn').addEventListener('click', () => FavoritesManager.exportLibrary());
+                document.getElementById('importLibraryInput').addEventListener('change', (e) => {
+                    FavoritesManager.importLibrary(e.target.files[0]);
+                    e.target.value = ''; // permite reimportar el mismo archivo si hace falta
+                });
 
                 document.getElementById('saveBtn').addEventListener('click', () => ExportManager.exportDocument());
                 document.getElementById('cleanExportBtn').addEventListener('click', () => ExportManager.exportDocument());
@@ -2043,10 +1664,6 @@
                 document.getElementById('videoPreview').classList.add('hidden');
                 document.getElementById('canvasView').classList.remove('hidden');
 
-                const gestureLayer = document.getElementById('gestureLayer');
-                if (gestureLayer) gestureLayer.classList.remove('hidden');
-                GestureController.updateModeIndicator();
-
                 WebGL2Pipeline.render(this.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
 
                 if (!this.isLabMode) { this.applyPresetValues(); } else { this.dispatchProcessing(); }
@@ -2056,7 +1673,8 @@
             dispatchProcessing() {
                 const filterValue = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
                 const targetStd = parseFloat(document.getElementById('intensitySlider').value);
-                ProcessingController.dispatch(this.currentOriginalData, filterValue, targetStd);
+                const roi = RoiSelector.getActiveRoi();
+                ProcessingController.dispatch(this.currentOriginalData, filterValue, targetStd, roi);
             },
 
             requestWebGLRender() {
@@ -2087,506 +1705,10 @@
             }
         };
 
-        
-// ============================================================
-// MÓDULO: GESTOS + AJUSTE PRECISO (B+C) + BOTTOM SHEET (A)
-// ============================================================
-
-const GestureController = {
-    active: false,
-    startX: 0, startY: 0,
-    startValue: 0,
-    currentParam: 'intensity',
-    paramMap: {
-        intensity: { label: 'Intensidad', min: 5, max: 250, step: 1, factor: 0.8 },
-        black:     { label: 'Punto negro', min: 0, max: 255, step: 1, factor: 1.2 },
-        gamma:     { label: 'Gamma', min: 10, max: 300, step: 1, factor: 1.0 },
-        white:     { label: 'Punto blanco', min: 0, max: 255, step: 1, factor: 1.2 }
-    },
-    hintShown: false,
-    lastTap: 0,
-
-    init() {
-        const layer = document.getElementById('gestureLayer');
-        if (!layer) return;
-
-        layer.addEventListener('touchstart', (e) => this.onStart(e.touches[0], e), { passive: false });
-        layer.addEventListener('touchmove', (e) => this.onMove(e.touches[0], e), { passive: false });
-        layer.addEventListener('touchend', (e) => this.onEnd(e), { passive: false });
-        layer.addEventListener('touchcancel', (e) => this.onEnd(e), { passive: false });
-
-        layer.addEventListener('mousedown', (e) => this.onStart(e, e));
-        window.addEventListener('mousemove', (e) => { if (this.active) this.onMove(e, e); });
-        window.addEventListener('mouseup', (e) => { if (this.active) this.onEnd(e); });
-
-        layer.addEventListener('touchend', (e) => this.detectDoubleTap(e));
-        layer.addEventListener('mouseup', (e) => this.detectDoubleTap(e));
-    },
-
-    onStart(touch, e) {
-        this.active = true;
-        this.startX = touch.clientX;
-        this.startY = touch.clientY;
-
-        const elId = this.currentParam === 'intensity' ? 'intensitySlider' :
-                     this.currentParam === 'black' ? 'sliderBlack' :
-                     this.currentParam === 'gamma' ? 'sliderGamma' : 'sliderWhite';
-        this.startValue = parseFloat(document.getElementById(elId).value);
-
-        if (!this.hintShown) {
-            this.hintShown = true;
-            const hint = document.getElementById('gestureHint');
-            if (hint) hint.style.opacity = '0';
-        }
-
-        this.showBadge(true);
-        if (e.preventDefault) e.preventDefault();
-    },
-
-    onMove(touch, e) {
-        if (!this.active) return;
-        const dx = touch.clientX - this.startX;
-        const param = this.paramMap[this.currentParam];
-
-        let newVal = this.startValue + (dx * param.factor);
-        newVal = Math.max(param.min, Math.min(param.max, Math.round(newVal / param.step) * param.step));
-
-        this.applyValue(newVal);
-        this.updateBadge(newVal);
-        if (e.preventDefault) e.preventDefault();
-    },
-
-    onEnd(e) {
-        this.active = false;
-        setTimeout(() => this.showBadge(false), 600);
-    },
-
-    detectDoubleTap(e) {
-        const now = Date.now();
-        if (now - this.lastTap < 300) {
-            enterPrecisionMode();
-        }
-        this.lastTap = now;
-    },
-
-    applyValue(val) {
-        const elId = this.currentParam === 'intensity' ? 'intensitySlider' :
-                     this.currentParam === 'black' ? 'sliderBlack' :
-                     this.currentParam === 'gamma' ? 'sliderGamma' : 'sliderWhite';
-        const el = document.getElementById(elId);
-        if (el) el.value = val;
-
-        if (this.currentParam !== 'intensity') {
-            UIController.updateLevelLabels();
-        }
-        UIController.dispatchProcessing();
-        UIController.requestWebGLRender();
-        this.updateModeIndicator();
-    },
-
-    updateBadge(val) {
-        const badge = document.getElementById('gestureBadge');
-        const param = this.paramMap[this.currentParam];
-        let display = val;
-        if (this.currentParam === 'gamma') display = (val / 100).toFixed(2);
-        badge.innerText = param.label + ': ' + display;
-    },
-
-    showBadge(show) {
-        const badge = document.getElementById('gestureBadge');
-        badge.style.opacity = show ? '1' : '0';
-    },
-
-    updateModeIndicator() {
-        const ind = document.getElementById('modeIndicator');
-        if (!ind) return;
-        const filter = UIController.isLabMode 
-            ? document.getElementById('filterSelect').value 
-            : UIController.currentAlgMode;
-        const intensityVal = document.getElementById('intensitySlider').value;
-        const labels = { pca_rgb: 'PCA RGB', yuv_stretch: 'YCbCr', dog: 'DoG', unsharp_mask: 'Unsharp' };
-        ind.innerText = (labels[filter] || filter) + ' · ' + this.paramMap[this.currentParam].label + ' ' + intensityVal;
-    },
-
-    setActiveParam(param) {
-        this.currentParam = param;
-        this.updateModeIndicator();
-    }
-};
-
-let precisionParam = 'intensity';
-
-function enterPrecisionMode() {
-    const overlay = document.getElementById('precisionOverlay');
-    overlay.classList.add('active');
-    updatePrecisionUI();
-}
-
-function exitPrecisionMode() {
-    document.getElementById('precisionOverlay').classList.remove('active');
-}
-
-function selectPrecisionParam(param) {
-    precisionParam = param;
-    GestureController.setActiveParam(param);
-
-    document.querySelectorAll('.precision-chip').forEach(chip => {
-        const isActive = chip.dataset.param === param;
-        chip.classList.toggle('active', isActive);
-    });
-
-    updatePrecisionUI();
-}
-
-function updatePrecisionUI() {
-    const config = {
-        intensity: { el: 'intensitySlider', label: 'Intensidad del estiramiento', displayFn: v => v },
-        black:     { el: 'sliderBlack',     label: 'Punto negro',                 displayFn: v => v },
-        gamma:     { el: 'sliderGamma',     label: 'Gamma / gris',                displayFn: v => (v/100).toFixed(2) },
-        white:     { el: 'sliderWhite',     label: 'Punto blanco',                displayFn: v => v }
-    };
-
-    const c = config[precisionParam];
-    const sourceEl = document.getElementById(c.el);
-    const slider = document.getElementById('precisionSlider');
-
-    slider.min = sourceEl.min;
-    slider.max = sourceEl.max;
-    slider.value = sourceEl.value;
-
-    document.getElementById('precisionLabel').innerText = c.label;
-    document.getElementById('precisionValue').innerText = c.displayFn(parseFloat(sourceEl.value));
-}
-
-function onPrecisionInput(val) {
-    const elMap = {
-        intensity: 'intensitySlider',
-        black: 'sliderBlack',
-        gamma: 'sliderGamma',
-        white: 'sliderWhite'
-    };
-    const targetEl = document.getElementById(elMap[precisionParam]);
-    targetEl.value = val;
-
-    const displayFn = {
-        intensity: v => v,
-        black: v => v,
-        gamma: v => (v/100).toFixed(2),
-        white: v => v
-    };
-    document.getElementById('precisionValue').innerText = displayFn[precisionParam](parseFloat(val));
-
-    if (precisionParam !== 'intensity') UIController.updateLevelLabels();
-    UIController.dispatchProcessing();
-    UIController.requestWebGLRender();
-    GestureController.updateModeIndicator();
-}
-
-let sheetCollapsed = false;
-
-function toggleSheet() {
-    const sheet = document.getElementById('bottomSheet');
-    sheetCollapsed = !sheetCollapsed;
-    sheet.classList.toggle('collapsed', sheetCollapsed);
-}
-
-function quickPreset(key) {
-    const preset = UIController.presets[key];
-    if (!preset) return;
-
-    UIController.currentAlgMode = preset.filter;
-    document.getElementById('intensitySlider').value = preset.intensity;
-    document.getElementById('sliderBlack').value = preset.black;
-    document.getElementById('sliderGamma').value = preset.gamma;
-    document.getElementById('sliderWhite').value = preset.white;
-
-    if (UIController.isLabMode) {
-        document.getElementById('filterSelect').value = preset.filter;
-    }
-
-    UIController.updateLevelLabels();
-    UIController.updateInterfaceLabels();
-    UIController.dispatchProcessing();
-    GestureController.updateModeIndicator();
-}
-
-let sheetHolding = false;
-
-function startSheetHold(e) {
-    e.preventDefault();
-    if (!UIController.currentOriginalData) return;
-    sheetHolding = true;
-    UIController.isHoldingOriginal = true;
-    WebGL2Pipeline.render(UIController.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
-    const btn = document.getElementById('sheetHoldBtn');
-    if (btn) btn.style.background = '#18181b';
-}
-
-function endSheetHold(e) {
-    e.preventDefault();
-    if (!sheetHolding) return;
-    sheetHolding = false;
-    UIController.isHoldingOriginal = false;
-    UIController.requestWebGLRender();
-    const btn = document.getElementById('sheetHoldBtn');
-    if (btn) btn.style.background = '#1e1e20';
-}
-
-
-
-// ============================================================
-// MÓDULO: MODO SIMPLE MÓVIL — DS STRETCH STYLE
-// ============================================================
-
-let mobileExportFlags = { img: true, json: true, geo: false };
-let currentMobilePreset = 'pigmento_rojo';
-
-function applyMobilePreset(key, btnEl) {
-    const preset = UIController.presets[key];
-    if (!preset) return;
-
-    currentMobilePreset = key;
-
-    // Marcar botón activo visualmente
-    document.querySelectorAll('.mobile-preset-btn').forEach(b => b.classList.remove('active'));
-    if (btnEl) btnEl.classList.add('active');
-
-    // Aplicar configuración
-    UIController.currentAlgMode = preset.filter;
-    document.getElementById('intensitySlider').value = preset.intensity;
-    document.getElementById('sliderBlack').value = preset.black;
-    document.getElementById('sliderGamma').value = preset.gamma;
-    document.getElementById('sliderWhite').value = preset.white;
-
-    if (UIController.isLabMode) {
-        document.getElementById('filterSelect').value = preset.filter;
-    }
-
-    UIController.updateLevelLabels();
-    UIController.updateInterfaceLabels();
-    UIController.dispatchProcessing();
-    if (GestureController.updateModeIndicator) {
-        GestureController.updateModeIndicator();
-    }
-
-    // Feedback táctil
-    if (navigator.vibrate) navigator.vibrate(8);
-}
-
-function switchToProMode() {
-    // Cambiar a modo profesional
-    UIController.switchUIMode(true);
-    document.body.classList.add('lab-mode');
-
-    // En móvil, mostrar los controles profesionales
-    if (window.innerWidth <= 600) {
-        // Asegurar que se vean los controles pro
-        document.getElementById('wrapperSimple').classList.add('hidden');
-        document.getElementById('tabProfesional').classList.add('active');
-        document.getElementById('tabSimple').classList.remove('active');
-    }
-}
-
-function switchToSimpleMode() {
-    UIController.switchUIMode(false);
-    document.body.classList.remove('lab-mode');
-
-    if (window.innerWidth <= 600) {
-        document.getElementById('wrapperSimple').classList.remove('hidden');
-        document.getElementById('tabSimple').classList.add('active');
-        document.getElementById('tabProfesional').classList.remove('active');
-    }
-}
-
-// ============================================================
-// EXPORTACIÓN MÓVIL — BOTTOM SHEET
-// ============================================================
-
-function openExportSheet() {
-    if (!UIController.currentOriginalData || !UIController.currentProcessedData) {
-        UIController.updateStatus("Carga una imagen primero.", "#ef4444");
-        if (navigator.vibrate) navigator.vibrate([30, 50, 30]);
-        return;
-    }
-    document.getElementById('exportSheetOverlay').classList.add('active');
-    document.getElementById('exportSheet').classList.add('active');
-}
-
-function closeExportSheet() {
-    document.getElementById('exportSheetOverlay').classList.remove('active');
-    document.getElementById('exportSheet').classList.remove('active');
-}
-
-function toggleMobileExport(flag) {
-    mobileExportFlags[flag] = !mobileExportFlags[flag];
-    const el = document.getElementById('mobileToggle' + flag.charAt(0).toUpperCase() + flag.slice(1));
-    el.classList.toggle('active', mobileExportFlags[flag]);
-}
-
-function executeMobileExport() {
-    // Sincronizar valores del sheet con los controles originales
-    document.getElementById('exportProjectName').value = document.getElementById('mobileExportName').value;
-    document.getElementById('exportFormatSelect').value = document.getElementById('mobileExportMode').value;
-    document.getElementById('formatSelect').value = document.getElementById('mobileExportFormat').value;
-    document.getElementById('exportImgCheck').checked = mobileExportFlags.img;
-    document.getElementById('exportJsonCheck').checked = mobileExportFlags.json;
-    document.getElementById('geoAuthCheck').checked = mobileExportFlags.geo;
-
-    if (mobileExportFlags.geo) {
-        document.getElementById('metadataDisplay').classList.remove('hidden');
-        GPSManager.requestLocation();
-    }
-
-    closeExportSheet();
-    ExportManager.exportDocument();
-
-    if (navigator.vibrate) navigator.vibrate(20);
-}
-
-// ============================================================
-// SOBRESCRIBIR switchUIMode para manejar móvil
-// ============================================================
-
-const _originalSwitchUIMode = UIController.switchUIMode.bind(UIController);
-UIController.switchUIMode = function(toLab) {
-    _originalSwitchUIMode(toLab);
-
-    if (window.innerWidth <= 600) {
-        if (toLab) {
-            document.body.classList.add('lab-mode');
-            // En modo pro móvil, ocultar strip y barra simple
-            const strip = document.getElementById('mobilePresetsStrip');
-            const bar = document.getElementById('mobileSimpleBar');
-            if (strip) strip.style.display = 'none';
-            if (bar) bar.style.display = 'none';
-        } else {
-            document.body.classList.remove('lab-mode');
-            // En modo simple móvil, mostrar strip y barra
-            const strip = document.getElementById('mobilePresetsStrip');
-            const bar = document.getElementById('mobileSimpleBar');
-            if (strip) strip.style.display = 'flex';
-            if (bar) bar.style.display = 'flex';
-        }
-    }
-};
-
-// ============================================================
-// SOBRESCRIBIR loadBitmapIntoPipeline para activar modo simple móvil
-// ============================================================
-
-const _originalLoadBitmap = UIController.loadBitmapIntoPipeline.bind(UIController);
-UIController.loadBitmapIntoPipeline = function(bitmap) {
-    _originalLoadBitmap(bitmap);
-
-    if (window.innerWidth <= 600 && !this.isLabMode) {
-        const strip = document.getElementById('mobilePresetsStrip');
-        const bar = document.getElementById('mobileSimpleBar');
-        if (strip) strip.style.display = 'flex';
-        if (bar) bar.style.display = 'flex';
-
-        // Aplicar el preset activo por defecto
-        const activeBtn = document.querySelector('.mobile-preset-btn.active');
-        if (activeBtn) {
-            applyMobilePreset(activeBtn.dataset.preset, activeBtn);
-        }
-    }
-};
-
-
-window.addEventListener('DOMContentLoaded', () => UIController.init());
+        window.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('versionLabel').textContent = 'v' + APP_VERSION;
+            UIController.init();
+        });
     </script>
-
-    <!-- ============================================================
-         MÓDULO: MODO SIMPLE MÓVIL — BARRA INFERIOR + PRESETS
-         ============================================================ -->
-
-    <!-- Strip de presets rápidos (modo simple móvil) -->
-    <div class="mobile-presets-strip" id="mobilePresetsStrip">
-        <button class="mobile-preset-btn active" data-preset="pigmento_rojo" onclick="applyMobilePreset('pigmento_rojo', this)">
-            <span class="preset-emoji">🎨</span>
-            <span>Rojo</span>
-        </button>
-        <button class="mobile-preset-btn" data-preset="rojo_degradado" onclick="applyMobilePreset('rojo_degradado', this)">
-            <span class="preset-emoji">🦬</span>
-            <span>Rojo deg.</span>
-        </button>
-        <button class="mobile-preset-btn" data-preset="blanco" onclick="applyMobilePreset('blanco', this)">
-            <span class="preset-emoji">⚪</span>
-            <span>Blanco</span>
-        </button>
-        <button class="mobile-preset-btn" data-preset="carbon" onclick="applyMobilePreset('carbon', this)">
-            <span class="preset-emoji">⚫</span>
-            <span>Carbón</span>
-        </button>
-        <button class="mobile-preset-btn" data-preset="grabados" onclick="applyMobilePreset('grabados', this)">
-            <span class="preset-emoji">🟤</span>
-            <span>Grabados</span>
-        </button>
-        <button class="mobile-preset-btn" data-preset="erosionada" onclick="applyMobilePreset('erosionada', this)">
-            <span class="preset-emoji">🌧</span>
-            <span>Erosión</span>
-        </button>
-    </div>
-
-    <!-- Barra inferior fija (modo simple móvil) -->
-    <div class="mobile-simple-bar" id="mobileSimpleBar">
-        <button class="bar-btn primary" id="mobileBarLeftBtn" onclick="switchToProMode()">🔬 Profesional</button>
-        <button class="bar-btn success" onclick="openExportSheet()">💾 Exportar</button>
-    </div>
-
-    <!-- ============================================================
-         MÓDULO: BOTTOM SHEET DE EXPORTACIÓN (MÓVIL)
-         ============================================================ -->
-    <div class="export-sheet-overlay" id="exportSheetOverlay" onclick="closeExportSheet()"></div>
-    <div class="export-sheet" id="exportSheet">
-        <div class="export-sheet-handle" onclick="closeExportSheet()"></div>
-        <div class="export-sheet-title">Exportar resultado</div>
-
-        <input type="text" class="export-project-input" id="mobileExportName" placeholder="Nombre del proyecto (vacío = auto-fecha)">
-
-        <div class="export-option-group">
-            <label class="export-option-label">Modo de salida</label>
-            <select class="export-option-select" id="mobileExportMode">
-                <option value="processed">Imagen procesada</option>
-                <option value="original">Imagen original</option>
-                <option value="combined">Original + procesada</option>
-            </select>
-        </div>
-
-        <div class="export-option-group">
-            <label class="export-option-label">Formato</label>
-            <select class="export-option-select" id="mobileExportFormat">
-                <option value="image/png">PNG (sin pérdidas)</option>
-                <option value="image/jpeg">JPEG HD (98%)</option>
-            </select>
-        </div>
-
-        <div class="export-toggle-row" onclick="toggleMobileExport('img')">
-            <div class="export-toggle-text">
-                Archivo gráfico
-                <span class="export-toggle-sub">.png o .jpg según formato</span>
-            </div>
-            <div class="toggle-switch active" id="mobileToggleImg"></div>
-        </div>
-
-        <div class="export-toggle-row" onclick="toggleMobileExport('json')">
-            <div class="export-toggle-text">
-                Parámetros de procesamiento
-                <span class="export-toggle-sub">.json con metadatos técnicos</span>
-            </div>
-            <div class="toggle-switch active" id="mobileToggleJson"></div>
-        </div>
-
-        <div class="export-toggle-row" onclick="toggleMobileExport('geo')">
-            <div class="export-toggle-text">
-                Georreferenciación GPS
-                <span class="export-toggle-sub">Incrustar coordenadas</span>
-            </div>
-            <div class="toggle-switch" id="mobileToggleGeo"></div>
-        </div>
-
-        <button class="export-btn-main" onclick="executeMobileExport()">💾 Exportar archivos</button>
-    </div>
-
 </body>
 </html>

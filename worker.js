@@ -21,7 +21,7 @@ function getCacheArray(key, size) {
 }
 
 self.onmessage = function(e) {
-    const { imgData, filter, targetStd, version } = e.data;
+    const { imgData, filter, targetStd, version, roi } = e.data;
     
     // Validación Numérica Perimetral (Objetivo 7)
     if (!imgData || imgData.width <= 0 || imgData.height <= 0 || !imgData.data) {
@@ -34,12 +34,24 @@ self.onmessage = function(e) {
     const numPixels = w * h;
     
     const uint8Data = imgData.data;
+
+    /**
+     * SELECCIÓN DE ÁREA (ROI) PARA EL CÁLCULO ESTADÍSTICO
+     * Replica el flujo de trabajo real de DStretch: si el usuario ha marcado una zona de la
+     * imagen (p. ej. recuadrando solo la pintura), la media y la matriz de covarianza del PCA
+     * se calculan ÚNICAMENTE con los píxeles de esa zona. La transformación resultante
+     * (rotación + escalado de varianza) se aplica después a la imagen COMPLETA, no solo a la
+     * selección. Esto suele separar mucho mejor el pigmento del soporte, porque la estadística
+     * ya no está "diluida" por el resto de la escena (roca, sombra, cielo, etc.).
+     * roiIndices === null significa "usar toda la imagen", que es el comportamiento original.
+     */
+    const roiIndices = buildRoiIndices(w, h, roi);
     
     // Fusión de recorridos: extracción de canales y cálculo simultáneo de medias
-    const extraction = extractChannelsAndMeans(uint8Data, numPixels, filter);
+    const extraction = extractChannelsAndMeans(uint8Data, numPixels, filter, roiIndices);
     
     // Procesamiento Estadístico Multivariante (PCA)
-    const processedChannels = decorrelationStretch(extraction.channels, extraction.means, numPixels, targetStd);
+    const processedChannels = decorrelationStretch(extraction.channels, extraction.means, numPixels, targetStd, roiIndices);
     if (!processedChannels) return; // Abortar si la matriz es totalmente degenerada
     
     let dstUint8 = new Uint8ClampedArray(numPixels * 4);
@@ -49,15 +61,42 @@ self.onmessage = function(e) {
 };
 
 /**
- * OPTIMIZACIÓN DE RECORRIDOS (Objetivo 5)
- * Extrae los canales de color y acumula los valores para la media estadística en una única pasada regular.
+ * Construye la lista de índices de píxel (formato fila-columna aplanado) contenidos dentro
+ * del recuadro de selección. Devuelve null si no hay selección activa o si la selección es
+ * degenerada (área nula), lo que indica a las funciones siguientes que deben usar la imagen
+ * completa, exactamente como antes de que existiera esta función.
  */
-function extractChannelsAndMeans(data, numPixels, filter) {
+function buildRoiIndices(w, h, roi) {
+    if (!roi) return null;
+
+    const x0 = Math.max(0, Math.floor(roi.x));
+    const y0 = Math.max(0, Math.floor(roi.y));
+    const x1 = Math.min(w, Math.ceil(roi.x + roi.w));
+    const y1 = Math.min(h, Math.ceil(roi.y + roi.h));
+    if (x1 <= x0 || y1 <= y0) return null;
+
+    const count = (x1 - x0) * (y1 - y0);
+    const indices = new Int32Array(count);
+    let k = 0;
+    for (let y = y0; y < y1; y++) {
+        const rowStart = y * w;
+        for (let x = x0; x < x1; x++) {
+            indices[k++] = rowStart + x;
+        }
+    }
+    return indices;
+}
+
+/**
+ * OPTIMIZACIÓN DE RECORRIDOS (Objetivo 5)
+ * Extrae los canales de color de TODA la imagen (se necesitan completos para poder reconstruir
+ * el resultado final sobre la foto entera) y acumula los valores para la media estadística
+ * restringida a la selección (roiIndices), si existe.
+ */
+function extractChannelsAndMeans(data, numPixels, filter, roiIndices) {
     const ch1 = getCacheArray('ch1', numPixels);
     const ch2 = getCacheArray('ch2', numPixels);
     const ch3 = getCacheArray('ch3', numPixels);
-    
-    let sum1 = 0, sum2 = 0, sum3 = 0;
 
     for (let i = 0; i < numPixels; i++) {
         const idx = i * 4;
@@ -73,44 +112,70 @@ function extractChannelsAndMeans(data, numPixels, filter) {
             ch2[i] = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
             ch3[i] = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
         }
-        
-        sum1 += ch1[i]; 
-        sum2 += ch2[i]; 
-        sum3 += ch3[i];
+    }
+
+    let sum1 = 0, sum2 = 0, sum3 = 0;
+    const statCount = roiIndices ? roiIndices.length : numPixels;
+
+    if (roiIndices) {
+        for (let k = 0; k < roiIndices.length; k++) {
+            const i = roiIndices[k];
+            sum1 += ch1[i]; sum2 += ch2[i]; sum3 += ch3[i];
+        }
+    } else {
+        for (let i = 0; i < numPixels; i++) {
+            sum1 += ch1[i]; sum2 += ch2[i]; sum3 += ch3[i];
+        }
     }
     
     return {
         channels: [ch1, ch2, ch3],
-        means: [sum1 / numPixels, sum2 / numPixels, sum3 / numPixels]
+        means: [sum1 / statCount, sum2 / statCount, sum3 / statCount]
     };
 }
 
 /**
  * PROCESAMIENTO CIENTÍFICO: Decorrelation Stretch mediante PCA (Objetivo 4)
  * Modifica las propiedades estadísticas intrínsecas del set de datos eliminando la covarianza.
+ * La matriz de covarianza (y por tanto los autovectores/autovalores) se calcula solo con los
+ * píxeles de roiIndices cuando existe una selección; en caso contrario, con la imagen completa.
  */
-function decorrelationStretch(channels, means, numPixels, targetStd) {
+function decorrelationStretch(channels, means, numPixels, targetStd, roiIndices) {
     const [ch1, ch2, ch3] = channels;
     const [m1, m2, m3] = means;
 
-    // Cálculo de la Matriz de Covarianza Simétrica
+    // Cálculo de la Matriz de Covarianza Simétrica (restringido a la selección si existe)
     let c00 = 0, c01 = 0, c02 = 0, c11 = 0, c12 = 0, c22 = 0;
-    for (let i = 0; i < numPixels; i++) {
-        const v1 = ch1[i] - m1; 
-        const v2 = ch2[i] - m2; 
-        const v3 = ch3[i] - m3;
-        c00 += v1 * v1; c01 += v1 * v2; c02 += v1 * v3;
-        c11 += v2 * v2; c12 += v2 * v3; c22 += v3 * v3;
+    const statCount = roiIndices ? roiIndices.length : numPixels;
+
+    if (roiIndices) {
+        for (let k = 0; k < roiIndices.length; k++) {
+            const i = roiIndices[k];
+            const v1 = ch1[i] - m1; const v2 = ch2[i] - m2; const v3 = ch3[i] - m3;
+            c00 += v1 * v1; c01 += v1 * v2; c02 += v1 * v3;
+            c11 += v2 * v2; c12 += v2 * v3; c22 += v3 * v3;
+        }
+    } else {
+        for (let i = 0; i < numPixels; i++) {
+            const v1 = ch1[i] - m1; const v2 = ch2[i] - m2; const v3 = ch3[i] - m3;
+            c00 += v1 * v1; c01 += v1 * v2; c02 += v1 * v3;
+            c11 += v2 * v2; c12 += v2 * v3; c22 += v3 * v3;
+        }
     }
     
-    const div = numPixels - 1;
+    const div = Math.max(1, statCount - 1);
     let cov = [
         [c00 / div, c01 / div, c02 / div],
         [c01 / div, c11 / div, c12 / div],
         [c02 / div, c12 / div, c22 / div]
     ];
 
-    // Diagonalización mediante rotaciones de Jacobi
+    // Diagonalización mediante rotaciones de Jacobi.
+    // Nota sobre las dimensiones de la matriz: siempre es 3x3 porque el algoritmo opera sobre
+    // 3 canales de color (RGB o YCbCr) — el tamaño de la matriz de covarianza es, por
+    // definición, N x N siendo N el número de bandas/canales de entrada. Con una imagen de 3
+    // bandas, 3x3 es la única dimensión correcta; solo crecería (p. ej. a 4x4) si se añadiera
+    // una banda adicional, como infrarrojo o ultravioleta, a la captura.
     const eigen = jacobiEigenDecomposition(cov);
     let V = eigen.vectors; 
     let L = eigen.values;
@@ -148,13 +213,20 @@ function decorrelationStretch(channels, means, numPixels, targetStd) {
             // Eliminación estricta de Math.abs(). Solo opera sobre autovalores válidos y reales.
             scales[i] = targetStd / Math.sqrt(L[i] + eps);
         }
+        // Caso implícito: 0 <= L[i] <= 1e-4 (autovalor positivo pero casi nulo). Se deja
+        // scales[i] en 1.0 a propósito: es una componente prácticamente sin varianza real
+        // (ruido de cuantización), y amplificarla como si fuera una componente principal
+        // válida solo magnificaría ese ruido en vez de información cromática útil.
     }
 
     const out1 = getCacheArray('out1', numPixels);
     const out2 = getCacheArray('out2', numPixels);
     const out3 = getCacheArray('out3', numPixels);
 
-    // Rotación directa al espacio PCA, normalización de varianza y rotación inversa al espacio original
+    // Rotación directa al espacio PCA, normalización de varianza y rotación inversa al espacio
+    // original — aplicada a TODOS los píxeles de la imagen (numPixels), no solo a los de la
+    // selección: la matriz se calcula con la selección, pero el resultado se extiende a toda
+    // la fotografía, igual que en DStretch.
     for (let i = 0; i < numPixels; i++) {
         const v1 = ch1[i] - m1; const v2 = ch2[i] - m2; const v3 = ch3[i] - m3;
         
