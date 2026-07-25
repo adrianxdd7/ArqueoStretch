@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ArqueoStretch</title>
     <style>
-        /* Asegurar cálculo uniforme del modelo de caja en todo el documento */
         *, *::before, *::after {
             box-sizing: border-box;
         }
@@ -36,9 +35,6 @@
             box-sizing: border-box;
         }
 
-        /* Solo los botones bloquean la selección (evita el resaltado accidental al tocar),
-           el resto del contenido (texto explicativo, campos de código, GPS) queda seleccionable
-           para que el usuario pueda copiarlo. */
         button {
             user-select: none;
             -webkit-user-select: none;
@@ -46,7 +42,6 @@
             touch-action: manipulation;
         }
 
-        /* Foco visible reforzado para navegación por teclado sobre controles personalizados */
         button:focus-visible,
         select:focus-visible,
         input:focus-visible,
@@ -68,7 +63,6 @@
         header h1 { font-size: 1.8rem; margin: 0 0 4px 0; font-weight: 700; }
         header p { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
 
-        /* Control de Pantalla Limpia */
         body.clean-screen header,
         body.clean-screen .controls-card,
         body.clean-screen #wrapperSimple.hidden ~ .pro-card,
@@ -148,7 +142,6 @@
             border: 1px solid var(--border);
         }
 
-        /* Tarjeta Taller del Visor de Imagen */
         .image-workshop-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
@@ -169,6 +162,8 @@
             width: 100%;
             aspect-ratio: 4/3;
             box-shadow: 0 12px 32px rgba(0,0,0,0.7);
+            user-select: none;
+            touch-action: none;
         }
 
         .viewer-card video, #canvasView {
@@ -178,6 +173,46 @@
             top: 0;
             left: 0;
             object-fit: contain;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: rgba(20, 20, 22, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 4px 6px;
+            z-index: 10;
+        }
+
+        .zoom-controls button {
+            background: #27272a;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.15s ease;
+        }
+
+        .zoom-controls button:hover {
+            background: var(--accent);
+        }
+
+        .zoom-controls span {
+            font-family: monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            padding: 0 6px;
+            min-width: 45px;
+            text-align: center;
         }
 
         .hidden { display: none !important; }
@@ -272,7 +307,6 @@
         }
         .manual-header { font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase; }
 
-        /* Enrutamiento condicional visual por CSS puro para mantener sincronía perfecta con JS */
         .pro-card { display: none; }
         .pro-only { display: none !important; }
         .simple-only { display: block !important; }
@@ -281,9 +315,6 @@
         #wrapperSimple.hidden ~ #configLibraryCard .pro-only { display: block !important; }
         #wrapperSimple.hidden ~ #configLibraryCard .simple-only { display: none !important; }
 
-        /* ====================================================
-           OPTIMIZACIÓN EXCLUSIVA PARA DISPOSITIVOS MÓVILES
-           ==================================================== */
         @media (max-width: 600px) {
             body {
                 padding: 8px;
@@ -298,13 +329,11 @@
                 font-size: 1.45rem;
             }
 
-            /* Forzar comportamiento mono-columna en las rejillas de botones */
             .grid-2 {
                 grid-template-columns: 1fr !important;
                 gap: 8px;
             }
 
-            /* Prevenir el colapso horizontal en filas de presets locales */
             .fav-row {
                 flex-direction: column;
                 align-items: stretch;
@@ -316,13 +345,11 @@
                 width: 100% !important;
             }
 
-            /* Corrección del escalado excesivo por padding en deslizadores nativos (iOS/Android) */
             input[type="range"] {
                 padding: 8px 4px !important;
                 width: 100% !important;
             }
 
-            /* Re-mapeo responsivo del panel técnico de niveles (Punto negro, gamma, blanco) */
             .level-row {
                 display: flex !important;
                 flex-wrap: wrap;
@@ -339,7 +366,7 @@
             }
 
             .level-row input[type="range"] {
-                order: 3; /* Envía de forma segura el slider a una línea inferior completa */
+                order: 3;
                 margin-top: 6px;
             }
 
@@ -349,27 +376,26 @@
                 border-radius: 4px;
             }
 
-            /* Adaptación geométrica flotante de la barra en Modo Pantalla Limpia */
             body.clean-screen .clean-bar {
                 position: fixed;
                 left: 8px;
                 right: 8px;
                 width: calc(100% - 16px) !important;
                 bottom: 8px;
-                flex-direction: row; /* Forzar fila en lugar de columna en dispositivos móviles */
+                flex-direction: row;
                 gap: 6px;
                 padding: 8px;
             }
 
             body.clean-screen .clean-bar button {
-                flex: 1; /* Distribución proporcional equitativa */
+                flex: 1;
                 width: auto !important;
                 padding: 10px 4px !important;
-                font-size: 0.75rem !important; /* Ajuste métrico para evitar desbordes */
+                font-size: 0.75rem !important;
             }
 
             body.clean-screen .viewer-card {
-                height: calc(100vh - 90px); /* Maximiza el viewport analítico de la imagen con barra horizontal */
+                height: calc(100vh - 90px);
             }
         }
     </style>
@@ -390,9 +416,18 @@
 
         <div class="image-workshop-card" id="imageWorkshopCard">
             <div class="viewer-card" id="viewerCard">
-                <video id="videoPreview" autoplay playsinline muted aria-label="Vista previa en directo de la cámara"></video>
-                <canvas id="canvasView" class="hidden" role="img" aria-label="Vista previa de la imagen procesada en tiempo real"></canvas>
-                <div id="roiOverlay" class="hidden" style="position:absolute; border:2px dashed #22c55e; background:rgba(34,197,94,0.15); pointer-events:none; box-sizing:border-box;"></div>
+                <div id="viewportInner" style="width:100%; height:100%; position:relative; transform-origin: 0 0;">
+                    <video id="videoPreview" autoplay playsinline muted aria-label="Vista previa en directo de la cámara"></video>
+                    <canvas id="canvasView" class="hidden" role="img" aria-label="Vista previa de la imagen procesada en tiempo real"></canvas>
+                    <div id="roiOverlay" class="hidden" style="position:absolute; border:2px dashed #22c55e; background:rgba(34,197,94,0.15); pointer-events:none; box-sizing:border-box;"></div>
+                </div>
+
+                <div class="zoom-controls">
+                    <button id="zoomOutBtn" title="Alejar (-)">➖</button>
+                    <span id="zoomLevelLabel">100%</span>
+                    <button id="zoomInBtn" title="Acercar (+)">➕</button>
+                    <button id="zoomResetBtn" title="Restablecer (1:1)">🔁</button>
+                </div>
             </div>
 
             <div class="image-group-buttons">
@@ -445,7 +480,7 @@
                     <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Explicación para usuarios</div>
                     <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Permite delimitar la morfología de grabados rupestres someros, piqueteados o incisiones en micro-relieve sobre piedra.</p>
                     <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Limitaciones</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Resalta de manera indiscriminada grietas geológicas naturales, líquenes, exfoliaciones y ruido de textura. No diferencia automáticamente entre la acción antrópica y las alteraciones del soporte.</p>
+                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Resalta de manera indiscriminate grietas geológicas naturales, líquenes, exfoliaciones y ruido de textura. No diferencia automáticamente entre la acción antrópica y las alteraciones del soporte.</p>
                 </div>
 
                 <div class="manual-card">
@@ -669,7 +704,6 @@
     </div>
 
     <script>
-        // Fuente única de verdad para el número de versión (antes duplicado en dos sitios distintos)
         const APP_VERSION = "1.2.0";
 
         const ImageLoader = {
@@ -748,7 +782,7 @@
 
             init(canvasElement) {
                 this.gl = canvasElement.getContext('webgl2', { alpha: false, antialias: false, powerPreference: "high-performance" });
-                if (!this.gl) throw new Error("WebGL2 no disponible en este dispositivo. Prueba con una versión reciente de Chrome, Firefox o Edge; en algunos navegadores antiguos o en modo ahorro de datos WebGL2 está desactivado.");
+                if (!this.gl) throw new Error("WebGL2 no disponible en este dispositivo.");
                 
                 const gl = this.gl;
                 const vs = this.compileShader(gl.VERTEX_SHADER, this.vertexShaderSource);
@@ -791,7 +825,7 @@
                 if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                     const info = gl.getShaderInfoLog(shader);
                     gl.deleteShader(shader);
-                    throw new Error(`Fallo compilación Shader (${type === gl.VERTEX_SHADER ? 'Vertex' : 'Fragment'}): ${info}`);
+                    throw new Error(`Fallo compilación Shader: ${info}`);
                 }
                 return shader;
             },
@@ -993,18 +1027,118 @@
             }
         };
 
-        /**
-         * RoiSelector: permite al usuario dibujar un recuadro sobre la imagen (con ratón o dedo)
-         * para delimitar la zona a partir de la cual se calculan las estadísticas de color del PCA,
-         * replicando la selección de región de DStretch. Convierte las coordenadas de pantalla
-         * (que incluyen el "letterboxing" de object-fit: contain) a coordenadas reales de píxel
-         * de la imagen.
-         */
+        const ZoomController = {
+            scale: 1,
+            translateX: 0,
+            translateY: 0,
+            minScale: 1,
+            maxScale: 8,
+            isPanning: false,
+            startPoint: { x: 0, y: 0 },
+
+            init() {
+                this.card = document.getElementById('viewerCard');
+                this.inner = document.getElementById('viewportInner');
+                this.lbl = document.getElementById('zoomLevelLabel');
+
+                document.getElementById('zoomInBtn').addEventListener('click', () => this.zoomAtCenter(1.3));
+                document.getElementById('zoomOutBtn').addEventListener('click', () => this.zoomAtCenter(1 / 1.3));
+                document.getElementById('zoomResetBtn').addEventListener('click', () => this.reset());
+
+                this.card.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    const factor = e.deltaY < 0 ? 1.15 : (1 / 1.15);
+                    this.zoomAtPoint(factor, e.clientX, e.clientY);
+                }, { passive: false });
+
+                this.card.addEventListener('mousedown', (e) => this.onStart(e.clientX, e.clientY));
+                window.addEventListener('mousemove', (e) => this.onMove(e.clientX, e.clientY));
+                window.addEventListener('mouseup', () => this.onEnd());
+
+                this.card.addEventListener('touchstart', (e) => {
+                    if (e.touches.length === 1) {
+                        this.onStart(e.touches[0].clientX, e.touches[0].clientY);
+                    }
+                }, { passive: true });
+
+                this.card.addEventListener('touchmove', (e) => {
+                    if (this.isPanning && e.touches.length === 1) {
+                        this.onMove(e.touches[0].clientX, e.touches[0].clientY);
+                    }
+                }, { passive: true });
+
+                this.card.addEventListener('touchend', () => this.onEnd());
+            },
+
+            onStart(clientX, clientY) {
+                if (RoiSelector && RoiSelector.drawMode) return;
+                if (this.scale <= 1) return;
+
+                this.isPanning = true;
+                this.startPoint = { x: clientY - this.translateY, xX: clientX - this.translateX };
+                this.card.style.cursor = 'grabbing';
+            },
+
+            onMove(clientX, clientY) {
+                if (!this.isPanning) return;
+                this.translateX = clientX - this.startPoint.xX;
+                this.translateY = clientY - this.startPoint.x;
+                this.applyTransform();
+            },
+
+            onEnd() {
+                this.isPanning = false;
+                if (this.card) this.card.style.cursor = '';
+            },
+
+            zoomAtCenter(factor) {
+                const rect = this.card.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                this.zoomAtPoint(factor, centerX, centerY);
+            },
+
+            zoomAtPoint(factor, clientX, clientY) {
+                const rect = this.card.getBoundingClientRect();
+                const mouseX = clientX - rect.left;
+                const mouseY = clientY - rect.top;
+
+                const oldScale = this.scale;
+                let newScale = oldScale * factor;
+                newScale = Math.max(this.minScale, Math.min(this.maxScale, newScale));
+
+                if (newScale === oldScale) return;
+
+                this.translateX = mouseX - (mouseX - this.translateX) * (newScale / oldScale);
+                this.translateY = mouseY - (mouseY - this.translateY) * (newScale / oldScale);
+                this.scale = newScale;
+
+                if (this.scale === 1) {
+                    this.translateX = 0;
+                    this.translateY = 0;
+                }
+
+                this.applyTransform();
+            },
+
+            reset() {
+                this.scale = 1;
+                this.translateX = 0;
+                this.translateY = 0;
+                this.applyTransform();
+            },
+
+            applyTransform() {
+                this.inner.style.transform = `translate(${this.translateX}px, ${this.translateY}px) scale(${this.scale})`;
+                this.lbl.innerText = `${Math.round(this.scale * 100)}%`;
+            }
+        };
+
         const RoiSelector = {
             drawMode: false,
             dragging: false,
             startContainerPoint: null,
-            roi: null, // {x, y, w, h} en coordenadas de píxel de la imagen, o null si no hay selección
+            roi: null,
 
             init() {
                 this.card = document.getElementById('viewerCard');
@@ -1026,6 +1160,7 @@
             },
 
             toggleDrawMode() {
+                if (ZoomController) ZoomController.reset();
                 this.drawMode = !this.drawMode;
                 this.modeBtn.setAttribute('aria-pressed', String(this.drawMode));
                 this.modeBtn.style.background = this.drawMode ? 'var(--accent)' : '#27272a';
@@ -1049,7 +1184,6 @@
                 return (this.useCheck && this.useCheck.checked && this.roi) ? this.roi : null;
             },
 
-            // Elemento de imagen actualmente visible (cámara en directo o canvas procesado)
             getImageElement() {
                 const canvas = document.getElementById('canvasView');
                 return canvas.classList.contains('hidden') ? document.getElementById('videoPreview') : canvas;
@@ -1061,8 +1195,6 @@
                 return { x: point.clientX - rect.left, y: point.clientY - rect.top, rect };
             },
 
-            // Deshace el "letterboxing" de object-fit: contain para convertir un punto de pantalla
-            // (relativo al contenedor) en coordenadas reales de píxel dentro de la imagen.
             toImageCoords(containerX, containerY, rect) {
                 const el = this.getImageElement();
                 const imgW = el.videoWidth || el.width;
@@ -1122,7 +1254,6 @@
                 if (!c0 || !c1) { this.overlay.classList.add('hidden'); return; }
 
                 const roiW = c1.x - c0.x, roiH = c1.y - c0.y;
-                // Descarta selecciones minúsculas (probablemente un toque accidental)
                 if (roiW < 15 || roiH < 15) {
                     this.overlay.classList.add('hidden');
                     UIController.updateStatus("La selección es demasiado pequeña, inténtalo de nuevo.", "#eab308");
@@ -1264,16 +1395,11 @@
                         "date": new Date().toISOString()
                     };
 
-                    // Documenta qué zona de la imagen se usó para calcular los colores (si el usuario
-                    // usó la selección de área), para que el resultado sea reproducible.
                     const activeRoi = RoiSelector.getActiveRoi();
                     if (activeRoi) {
                         jsonMetadata.processing.regionOfInterest = activeRoi;
                     }
 
-                    // Antes esta casilla no incrustaba nada: se pedían y mostraban las coordenadas
-                    // pero nunca se guardaban en el archivo exportado. Ahora sí se incluyen si el
-                    // usuario activó "Incrustar metadatos georreferenciales (GPS)" y hay coordenadas disponibles.
                     if (document.getElementById('geoAuthCheck').checked && GPSManager.telemetry) {
                         jsonMetadata.geolocation = {
                             "latitude": GPSManager.telemetry.lat,
@@ -1314,6 +1440,7 @@
                 try { WebGL2Pipeline.init(document.getElementById('canvasView')); } catch (err) { this.updateStatus(err.message, "#ef4444"); return; }
                 ProcessingController.init();
                 FavoritesManager.load();
+                ZoomController.init();
                 this.setupEventListeners();
                 CameraController.init();
                 RoiSelector.init();
@@ -1331,7 +1458,6 @@
                     document.getElementById('tabSimple').classList.remove('active');
                     document.getElementById('wrapperSimple').classList.add('hidden');
                     
-                    // Mostrar el botón del manual en modo profesional
                     manualBtn.classList.remove('hidden');
                     
                     document.getElementById('filterSelect').value = this.currentAlgMode;
@@ -1341,7 +1467,6 @@
                     document.getElementById('tabProfesional').classList.remove('active');
                     document.getElementById('wrapperSimple').classList.remove('hidden');
                     
-                    // Ocultar el botón y el panel del manual al volver al modo simple
                     manualBtn.classList.add('hidden');
                     manualPanel.classList.add('hidden');
                     
@@ -1441,12 +1566,11 @@
                         await navigator.clipboard.writeText(field.value);
                         this.updateStatus("Código copiado al portapapeles.", "#22c55e");
                     } catch (err) {
-                        field.select(); // alternativa si la API del portapapeles no está disponible
+                        field.select();
                         this.updateStatus("Selecciona y copia el código manualmente.", "#f59e0b");
                     }
                 });
 
-                // MANEJADOR DE EVENTOS PARA LA IMPORTACIÓN DEL ARCHIVO PARSEADO (.JSON)
                 document.getElementById('importJsonInput').addEventListener('change', (e) => {
                     const file = e.target.files[0];
                     if (!file) return;
@@ -1485,22 +1609,19 @@
                         }
                     };
                     reader.readAsText(file);
-                    e.target.value = ""; // Limpiar búfer del input file
+                    e.target.value = "";
                 });
 
                 document.getElementById('toggleManualBtn').addEventListener('click', () => {
                     const panel = document.getElementById('manualPanel');
                     if(panel.classList.contains('hidden')) {
                         panel.classList.remove('hidden');
-                        document.getElementById('toggleManualBtn').innerText = "ℹ Información sobre algoritmos";
                     } else {
                         panel.classList.add('hidden');
-                        document.getElementById('toggleManualBtn').innerText = "ℹ Información sobre algoritmos";
                     }
                 });
                 document.getElementById('closeManualBtn').addEventListener('click', () => {
                     document.getElementById('manualPanel').classList.add('hidden');
-                    document.getElementById('toggleManualBtn').innerText = "ℹ Información sobre algoritmos";
                 });
 
                 document.getElementById('uploadInput').addEventListener('change', async (e) => {
@@ -1549,11 +1670,9 @@
                     this.requestWebGLRender();
                 };
 
-                // Repite startHold/endHold en keydown/keyup para que también funcione con teclado (Enter/Espacio),
-                // no solo con ratón o pantalla táctil.
                 const startHoldKey = (e) => {
                     if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if (e.repeat) return; // evita reiniciar en repetición automática de tecla mantenida
+                    if (e.repeat) return;
                     startHold(e);
                 };
                 const endHoldKey = (e) => {
@@ -1628,7 +1747,7 @@
                 document.getElementById('exportLibraryBtn').addEventListener('click', () => FavoritesManager.exportLibrary());
                 document.getElementById('importLibraryInput').addEventListener('change', (e) => {
                     FavoritesManager.importLibrary(e.target.files[0]);
-                    e.target.value = ''; // permite reimportar el mismo archivo si hace falta
+                    e.target.value = '';
                 });
 
                 document.getElementById('saveBtn').addEventListener('click', () => ExportManager.exportDocument());
