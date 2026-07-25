@@ -571,11 +571,19 @@
             <div class="control-group">
                 <label class="setting-label" for="filterSelect">Algoritmo de procesamiento seleccionado</label>
                 <select id="filterSelect">
-                    <option value="pca_rgb">PCA Stretch estándar (Matriz sRGB Lineal)</option>
-                    <option value="yuv_stretch">PCA Stretch en espacio de color YCbCr (BT.601)</option>
-                    <option value="dog">Filtro estructural: Difference of Gaussians (DoG 2D)</option>
-                    <option value="unsharp_mask">Realce de micro-textura: Unsharp Mask (GPU)</option>
-                </select>
+					<option value="yds">YDS - General / Amarillos (Espacio YXX)</option>
+					<option value="ybr">YBR - Rojos (Espacio YXX)</option>
+					<option value="ybk">YBK - Negros (Espacio YXX)</option>
+					<option value="yre">YRE - Rojos muy degradados (Espacio YXX)</option>
+					<option value="lab">LAB - General / Sombras (Espacio LXX)</option>
+					<option value="lds">LDS - Amarillos (Espacio LXX)</option>
+					<option value="lre">LRE - Rojos tenues (Espacio LXX)</option>
+					<option value="crgb">CRGB - Matriz fija rápida para rojos</option>
+					<option value="pca_rgb">PCA Stretch estándar (sRGB Lineal)</option>
+					<option value="yuv_stretch">PCA Stretch YCbCr (BT.601)</option>
+					<option value="dog">Filtro estructural: Difference of Gaussians (DoG 2D)</option>
+					<option value="unsharp_mask">Realce de micro-textura: Unsharp Mask (GPU)</option>
+				</select>
             </div>
 
             <div class="control-group" id="roiControlGroup" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
@@ -1112,15 +1120,21 @@
 
                 this.card.addEventListener('touchstart', (e) => {
                     if (e.touches.length === 1) {
+                        // Solo se bloquea el scroll de la página si de verdad vamos a hacer pan
+                        // (imagen ampliada y no estamos dibujando una selección de zona).
+                        if (this.scale > 1 && !(typeof RoiSelector !== 'undefined' && RoiSelector.drawMode)) {
+                            e.preventDefault();
+                        }
                         this.onStart(e.touches[0].clientX, e.touches[0].clientY);
                     }
-                }, { passive: true });
+                }, { passive: false });
 
                 this.card.addEventListener('touchmove', (e) => {
                     if (this.isPanning && e.touches.length === 1) {
+                        e.preventDefault(); // evita que la página se desplace mientras se arrastra la imagen
                         this.onMove(e.touches[0].clientX, e.touches[0].clientY);
                     }
-                }, { passive: true });
+                }, { passive: false });
 
                 this.card.addEventListener('touchend', () => this.onEnd());
             },
@@ -1154,6 +1168,11 @@
             },
 
             zoomAtPoint(factor, clientX, clientY) {
+                // Si se está dibujando una selección de zona, el zoom queda bloqueado: cambiar de
+                // escala en mitad del dibujo desincronizaría las coordenadas de la selección con
+                // los píxeles reales de la imagen.
+                if (typeof RoiSelector !== 'undefined' && RoiSelector.drawMode) return;
+
                 const rect = this.card.getBoundingClientRect();
                 const mouseX = clientX - rect.left;
                 const mouseY = clientY - rect.top;
@@ -1481,14 +1500,14 @@
             offscreenCanvas: null, 
 
             presets: {
-                rojo_oxido: { filter: 'pca_rgb', intensity: 110, black: 15, gamma: 95, white: 240 },
-                rojo_degradado:  { filter: 'yuv_stretch', intensity: 160, black: 5, gamma: 115, white: 250 },
-                amarillo_tenue:  { filter: 'yuv_stretch', intensity: 75, black: 30, gamma: 75, white: 220 },
-                negro_carbon:  { filter: 'yuv_stretch', intensity: 50, black: 60, gamma: 140, white: 210 },
-                superposicion_colores:  { filter: 'yuv_stretch', intensity: 120, black: 0, gamma: 175, white: 255 },
-                grabados_relieve:  { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
-				textura_erosionada: { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
-				alto_contraste: { filter: 'pca_rgb', intensity: 85, black: 45, gamma: 65, white: 215 }
+                rojo_oxido:           { filter: 'yre', intensity: 15, black: 0, gamma: 100, white: 255 },
+				rojo_degradado:       { filter: 'ybr', intensity: 15, black: 0, gamma: 100, white: 255 },
+				amarillo_tenue:       { filter: 'yds', intensity: 15, black: 0, gamma: 100, white: 255 },
+				negro_carbon:         { filter: 'ybk', intensity: 15, black: 0, gamma: 100, white: 255 },
+				superposicion_colores:{ filter: 'lab', intensity: 15, black: 0, gamma: 100, white: 255 },
+				grabados_relieve:     { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
+				textura_erosionada:   { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
+				alto_contraste:       { filter: 'crgb', intensity: 15, black: 10, gamma: 95, white: 245 }
             },
 
             init() {

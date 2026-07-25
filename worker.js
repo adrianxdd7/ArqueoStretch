@@ -1,11 +1,9 @@
 // =========================================================================
-// ARCHIVO: worker.js - PROCESAMIENTO MATRICIAL (PCA & DECORRELATION STRETCH)
+// ARCHIVO: worker.js - PROCESAMIENTO MATRICIAL (YXX, LXX, CRGB, PCA)
 // =========================================================================
 
 /**
- * CACHE GLOBAL DE ARRAYS TIPADOS (Objetivo 1)
- * Evita la asignación y destrucción sistemática de memoria en cada ciclo de ejecución,
- * mitigando por completo la latencia por recolección de basura (Garbage Collection).
+ * CACHE GLOBAL DE ARRAYS TIPADOS
  */
 const cache = {
     ch1: null, ch2: null, ch3: null,
@@ -20,52 +18,63 @@ function getCacheArray(key, size) {
     return cache[key];
 }
 
+// -------------------------------------------------------------------------
+// TABLAS LUT Y FUNCIONES AUXILIARES PARA ESPACIOS CIE XYZ / LAB / LXX
+// -------------------------------------------------------------------------
+const rgb2xyzlut = new Float32Array(256);
+for (let i = 0; i < 256; i++) {
+    let v = i / 255.0;
+    v = (v > 0.04045) ? Math.pow((v + 0.055) / 1.055, 2.4) : (v / 12.92);
+    rgb2xyzlut[i] = v * 100.0;
+}
+
+function fLab(t) {
+    return (t > 0.008856) ? Math.cbrt(t) : (7.787 * t + 0.13793103448275862);
+}
+
+function fLabInv(t) {
+    const t3 = t * t * t;
+    return (t3 > 0.008856) ? t3 : ((t - 0.13793103448275862) / 7.787);
+}
+
+function xyz2rgbVal(val) {
+    let v = val / 100.0;
+    if (v <= 0) return 0;
+    v = (v > 0.0031308) ? (1.055 * Math.pow(v, 0.4166666666666667) - 0.055) : (12.92 * v);
+    return Math.min(255, Math.max(0, Math.round(v * 255.0)));
+}
+
+// -------------------------------------------------------------------------
+// RECEPCIÓN DE MENSAJES EN EL WORKER
+// -------------------------------------------------------------------------
 self.onmessage = function(e) {
     const { imgData, filter, targetStd, version, roi } = e.data;
     
-    // Validación Numérica Perimetral (Objetivo 7)
     if (!imgData || imgData.width <= 0 || imgData.height <= 0 || !imgData.data) {
-        console.error("[ArqueoStretch Worker] Estructura de imagen inválida o degenerada.");
+        console.error("[ArqueoStretch Worker] Estructura de imagen inválida.");
         return;
     }
 
     const w = imgData.width;
     const h = imgData.height;
     const numPixels = w * h;
-    
     const uint8Data = imgData.data;
 
-    /**
-     * SELECCIÓN DE ÁREA (ROI) PARA EL CÁLCULO ESTADÍSTICO
-     * Replica el flujo de trabajo real de DStretch: si el usuario ha marcado una zona de la
-     * imagen (p. ej. recuadrando solo la pintura), la media y la matriz de covarianza del PCA
-     * se calculan ÚNICAMENTE con los píxeles de esa zona. La transformación resultante
-     * (rotación + escalado de varianza) se aplica después a la imagen COMPLETA, no solo a la
-     * selección. Esto suele separar mucho mejor el pigmento del soporte, porque la estadística
-     * ya no está "diluida" por el resto de la escena (roca, sombra, cielo, etc.).
-     * roiIndices === null significa "usar toda la imagen", que es el comportamiento original.
-     */
     const roiIndices = buildRoiIndices(w, h, roi);
     
-    // Fusión de recorridos: extracción de canales y cálculo simultáneo de medias
+    // Extracción de canales y cálculo de medias estadísticas
     const extraction = extractChannelsAndMeans(uint8Data, numPixels, filter, roiIndices);
     
-    // Procesamiento Estadístico Multivariante (PCA)
-    const processedChannels = decorrelationStretch(extraction.channels, extraction.means, numPixels, targetStd, roiIndices);
-    if (!processedChannels) return; // Abortar si la matriz es totalmente degenerada
+    // Procesamiento PCA o Matriz Fija CRGB
+    const processedChannels = decorrelationStretch(extraction.channels, extraction.means, numPixels, targetStd, filter, roiIndices);
+    if (!processedChannels) return;
     
     let dstUint8 = new Uint8ClampedArray(numPixels * 4);
-    reconstructImage(processedChannels, dstUint8, numPixels, filter);
+    reconstructImage(processedChannels, extraction.means, dstUint8, numPixels, filter);
     
     self.postMessage({ dstUint8: dstUint8, version: version }, [dstUint8.buffer]);
 };
 
-/**
- * Construye la lista de índices de píxel (formato fila-columna aplanado) contenidos dentro
- * del recuadro de selección. Devuelve null si no hay selección activa o si la selección es
- * degenerada (área nula), lo que indica a las funciones siguientes que deben usar la imagen
- * completa, exactamente como antes de que existiera esta función.
- */
 function buildRoiIndices(w, h, roi) {
     if (!roi) return null;
 
@@ -87,16 +96,26 @@ function buildRoiIndices(w, h, roi) {
     return indices;
 }
 
-/**
- * OPTIMIZACIÓN DE RECORRIDOS (Objetivo 5)
- * Extrae los canales de color de TODA la imagen (se necesitan completos para poder reconstruir
- * el resultado final sobre la foto entera) y acumula los valores para la media estadística
- * restringida a la selección (roiIndices), si existe.
- */
+// -------------------------------------------------------------------------
+// TRANSFORMACIÓN DIRECTA A ESPACIOS VECTORIALES DE DSTRETCH
+// -------------------------------------------------------------------------
 function extractChannelsAndMeans(data, numPixels, filter, roiIndices) {
     const ch1 = getCacheArray('ch1', numPixels);
     const ch2 = getCacheArray('ch2', numPixels);
     const ch3 = getCacheArray('ch3', numPixels);
+
+    // Configuración de coeficientes por espacio
+    let ky = 1.0, ku = 0.5, kv = 1.0; // YDS por defecto
+    if (filter === 'ybr') { ky = 1.0; ku = 0.8; kv = 0.4; }
+    else if (filter === 'ybk') { ky = 1.5; ku = 0.2; kv = 1.6; }
+    else if (filter === 'yre') { ky = 8.0; ku = 1.0; kv = 0.4; }
+
+    let Lm1 = 0.5, Lm2 = 0.5, Am = 1.0, Bm = 1.0; // LAB por defecto
+    if (filter === 'lds') { Lm1 = 0.5; Lm2 = 0.5; Am = 0.9; Bm = 0.5; }
+    else if (filter === 'lre') { Lm1 = 0.5; Lm2 = 0.5; Am = 0.5; Bm = 1.0; }
+
+    const isYXX = ['yds', 'ybr', 'ybk', 'yre'].includes(filter);
+    const isLXX = ['lab', 'lds', 'lre'].includes(filter);
 
     for (let i = 0; i < numPixels; i++) {
         const idx = i * 4;
@@ -104,13 +123,33 @@ function extractChannelsAndMeans(data, numPixels, filter, roiIndices) {
         const g = data[idx + 1]; 
         const b = data[idx + 2];
 
-        if (filter === 'pca_rgb') {
+        if (filter === 'pca_rgb' || filter === 'crgb') {
             ch1[i] = r; ch2[i] = g; ch3[i] = b;
         } else if (filter === 'yuv_stretch') {
-            // Conversión YCbCr estándar BT.601
             ch1[i] = 0.299 * r + 0.587 * g + 0.114 * b;
             ch2[i] = -0.168736 * r - 0.331264 * g + 0.5 * b + 128;
             ch3[i] = 0.5 * r - 0.418688 * g - 0.081312 * b + 128;
+        } else if (isYXX) {
+            const y = 0.299 * r + 0.587 * g + 0.114 * b;
+            ch1[i] = y;
+            ch2[i] = ky * (b - ku * y);
+            ch3[i] = ky * (r - kv * y);
+        } else if (isLXX) {
+            const rX = rgb2xyzlut[r];
+            const gX = rgb2xyzlut[g];
+            const bX = rgb2xyzlut[b];
+
+            const X = rX * 0.4124 + gX * 0.3576 + bX * 0.1805;
+            const Y = rX * 0.2126 + gX * 0.7152 + bX * 0.0722;
+            const Z = rX * 0.0193 + gX * 0.1192 + bX * 0.9505;
+
+            const fX = fLab(X / 95.047);
+            const fY = fLab(Y / 100.000);
+            const fZ = fLab(Z / 108.883);
+
+            ch1[i] = 116.0 * fY - 16.0;
+            ch2[i] = (250.0 / Lm1) * (fX - Am * fY);
+            ch3[i] = (100.0 / Lm2) * (Bm * fY - fZ);
         }
     }
 
@@ -134,17 +173,41 @@ function extractChannelsAndMeans(data, numPixels, filter, roiIndices) {
     };
 }
 
-/**
- * PROCESAMIENTO CIENTÍFICO: Decorrelation Stretch mediante PCA (Objetivo 4)
- * Modifica las propiedades estadísticas intrínsecas del set de datos eliminando la covarianza.
- * La matriz de covarianza (y por tanto los autovectores/autovalores) se calcula solo con los
- * píxeles de roiIndices cuando existe una selección; en caso contrario, con la imagen completa.
- */
-function decorrelationStretch(channels, means, numPixels, targetStd, roiIndices) {
+// -------------------------------------------------------------------------
+// DESCORRELACIÓN PCA Y MATRIZ CRGB
+// -------------------------------------------------------------------------
+function decorrelationStretch(channels, means, numPixels, targetStd, filter, roiIndices) {
     const [ch1, ch2, ch3] = channels;
     const [m1, m2, m3] = means;
 
-    // Cálculo de la Matriz de Covarianza Simétrica (restringido a la selección si existe)
+    const out1 = getCacheArray('out1', numPixels);
+    const out2 = getCacheArray('out2', numPixels);
+    const out3 = getCacheArray('out3', numPixels);
+
+    // MATRIZ FIJA CRGB (Sin PCA, multiplicación directa de DStretch)
+    if (filter === 'crgb') {
+        const scale = targetStd / 10.0;
+        const m00 = 0.37 * scale,  m01 = 0.34 * scale,  m02 = 0.30 * scale;
+        const m10 = -3.80 * scale, m11 = 7.70 * scale,  m12 = -4.00 * scale;
+        const m20 = -1.80 * scale, m21 = 0.22 * scale,  m22 = 2.00 * scale;
+
+        for (let i = 0; i < numPixels; i++) {
+            const v1 = ch1[i] - m1;
+            const v2 = ch2[i] - m2;
+            const v3 = ch3[i] - m3;
+
+            out1[i] = m00 * v1 + m01 * v2 + m02 * v3 + m1;
+            out2[i] = m10 * v1 + m11 * v2 + m12 * v3 + m2;
+            out3[i] = m20 * v1 + m21 * v2 + m22 * v3 + m3;
+        }
+        return [out1, out2, out3];
+    }
+
+    // Ajuste de escala para espacio LRE (DStretch reduce la escala a la mitad por alta sensibilidad)
+    let effectiveTargetStd = targetStd;
+    if (filter === 'lre') effectiveTargetStd *= 0.5;
+
+    // Cálculo de la Matriz de Covarianza Simétrica 3x3
     let c00 = 0, c01 = 0, c02 = 0, c11 = 0, c12 = 0, c22 = 0;
     const statCount = roiIndices ? roiIndices.length : numPixels;
 
@@ -170,17 +233,10 @@ function decorrelationStretch(channels, means, numPixels, targetStd, roiIndices)
         [c02 / div, c12 / div, c22 / div]
     ];
 
-    // Diagonalización mediante rotaciones de Jacobi.
-    // Nota sobre las dimensiones de la matriz: siempre es 3x3 porque el algoritmo opera sobre
-    // 3 canales de color (RGB o YCbCr) — el tamaño de la matriz de covarianza es, por
-    // definición, N x N siendo N el número de bandas/canales de entrada. Con una imagen de 3
-    // bandas, 3x3 es la única dimensión correcta; solo crecería (p. ej. a 4x4) si se añadiera
-    // una banda adicional, como infrarrojo o ultravioleta, a la captura.
     const eigen = jacobiEigenDecomposition(cov);
     let V = eigen.vectors; 
     let L = eigen.values;
 
-    // Ordenación decreciente de Autovalores (Varianza de los Componentes Principales)
     let pIndices = [0, 1, 2];
     pIndices.sort((a, b) => L[b] - L[a]);
 
@@ -192,41 +248,19 @@ function decorrelationStretch(channels, means, numPixels, targetStd, roiIndices)
     ];
     L = sortedL; V = sortedV;
 
-    /**
-     * AJUSTE PRECISION EPSILON (Objetivo 3)
-     * Reducido a 1e-6 para preservar el rango dinámico real de componentes hiper-sutiles.
-     */
     const eps = 1e-6;
     let scales = [1.0, 1.0, 1.0];
 
-    // Validación e igualación de varianzas (Objetivo 2 y 7)
     for (let i = 0; i < 3; i++) {
-        if (isNaN(L[i]) || !isFinite(L[i])) {
-            console.error(`[ArqueoStretch] Inestabilidad numérica: Autovalor no numérico o infinito detectado en L[${i}].`);
-            return null;
-        }
+        if (isNaN(L[i]) || !isFinite(L[i])) return null;
         if (L[i] < 0) {
-            console.warn(`[ArqueoStretch Avisos Científicos] Autovalor negativo detectado de forma anómala (L[${i}] = ${L[i]}). ` +
-                         `Origen: Error numérico de redondeo IEEE 754 bajo altísima correlación lineal o imagen plana uniforme.`);
-            scales[i] = 1.0; // Conservar escala neutra sin distorsionar el componente imaginario
+            scales[i] = 1.0;
         } else if (L[i] > 1e-4) {
-            // Eliminación estricta de Math.abs(). Solo opera sobre autovalores válidos y reales.
-            scales[i] = targetStd / Math.sqrt(L[i] + eps);
+            scales[i] = effectiveTargetStd / Math.sqrt(L[i] + eps);
         }
-        // Caso implícito: 0 <= L[i] <= 1e-4 (autovalor positivo pero casi nulo). Se deja
-        // scales[i] en 1.0 a propósito: es una componente prácticamente sin varianza real
-        // (ruido de cuantización), y amplificarla como si fuera una componente principal
-        // válida solo magnificaría ese ruido en vez de información cromática útil.
     }
 
-    const out1 = getCacheArray('out1', numPixels);
-    const out2 = getCacheArray('out2', numPixels);
-    const out3 = getCacheArray('out3', numPixels);
-
-    // Rotación directa al espacio PCA, normalización de varianza y rotación inversa al espacio
-    // original — aplicada a TODOS los píxeles de la imagen (numPixels), no solo a los de la
-    // selección: la matriz se calcula con la selección, pero el resultado se extiende a toda
-    // la fotografía, igual que en DStretch.
+    // Rotación PCA -> Estiramiento -> Map Back (Rotación Inversa)
     for (let i = 0; i < numPixels; i++) {
         const v1 = ch1[i] - m1; const v2 = ch2[i] - m2; const v3 = ch3[i] - m3;
         
@@ -279,10 +313,16 @@ function jacobiEigenDecomposition(A) {
     return { values: [M[0][0], M[1][1], M[2][2]], vectors: V };
 }
 
-function reconstructImage(processedChannels, dstUint8, numPixels, filter) {
+// -------------------------------------------------------------------------
+// MAPEO INVERSO Y RECONSTRUCCIÓN A RGB DE SALIDA
+// -------------------------------------------------------------------------
+function reconstructImage(processedChannels, means, dstUint8, numPixels, filter) {
     const rData = getCacheArray('rData', numPixels);
     const gData = getCacheArray('gData', numPixels);
     const bData = getCacheArray('bData', numPixels);
+
+    const isYXX = ['yds', 'ybr', 'ybk', 'yre'].includes(filter);
+    const isLXX = ['lab', 'lds', 'lre'].includes(filter);
 
     if (filter === 'yuv_stretch') {
         const [Y, Cb, Cr] = processedChannels;
@@ -295,17 +335,61 @@ function reconstructImage(processedChannels, dstUint8, numPixels, filter) {
             gData[i] = yVal - 0.344136 * cbVal - 0.714136 * crVal;
             bData[i] = yVal + 1.772 * cbVal;
         }
+    } else if (isYXX) {
+        let ky = 1.0, ku = 0.5, kv = 1.0;
+        if (filter === 'ybr') { ky = 1.0; ku = 0.8; kv = 0.4; }
+        else if (filter === 'ybk') { ky = 1.5; ku = 0.2; kv = 1.6; }
+        else if (filter === 'yre') { ky = 8.0; ku = 1.0; kv = 0.4; }
+
+        const [Y, U, V] = processedChannels;
+        for (let i = 0; i < numPixels; i++) {
+            const y = Y[i];
+            const u = U[i];
+            const v = V[i];
+
+            const r = (v / ky) + kv * y;
+            const b = (u / ky) + ku * y;
+            const g = 1.70358 * (y - 0.299 * r - 0.114 * b);
+
+            rData[i] = r;
+            gData[i] = g;
+            bData[i] = b;
+        }
+    } else if (isLXX) {
+        let Lm1 = 0.5, Lm2 = 0.5, Am = 1.0, Bm = 1.0;
+        if (filter === 'lds') { Lm1 = 0.5; Lm2 = 0.5; Am = 0.9; Bm = 0.5; }
+        else if (filter === 'lre') { Lm1 = 0.5; Lm2 = 0.5; Am = 0.5; Bm = 1.0; }
+
+        const [L, A, B] = processedChannels;
+        for (let i = 0; i < numPixels; i++) {
+            const lVal = L[i];
+            const aVal = A[i];
+            const bVal = B[i];
+
+            const fY = (lVal + 16.0) / 116.0;
+            const fX = (Lm1 * aVal / 250.0) + Am * fY;
+            const fZ = Bm * fY - (Lm2 * bVal / 100.0);
+
+            const X = 95.047 * fLabInv(fX);
+            const Y = 100.000 * fLabInv(fY);
+            const Z = 108.883 * fLabInv(fZ);
+
+            const rLin = X * 0.032406 + Y * -0.015372 + Z * -0.004986;
+            const gLin = X * -0.009689 + Y * 0.018758 + Z * 0.000415;
+            const bLin = X * 0.000557 + Y * -0.002040 + Z * 0.010570;
+
+            rData[i] = xyz2rgbVal(rLin * 100.0);
+            gData[i] = xyz2rgbVal(gLin * 100.0);
+            bData[i] = xyz2rgbVal(bLin * 100.0);
+        }
     } else {
         rData.set(processedChannels[0]);
         gData.set(processedChannels[1]);
         bData.set(processedChannels[2]);
     }
 
-    let globalMin = Infinity;
-    let globalMax = -Infinity;
-
+    let globalMin = Infinity, globalMax = -Infinity;
     for (let i = 0; i < numPixels; i++) {
-        // Sanitización estricta ante valores numéricos corruptos
         if (isNaN(rData[i]) || !isFinite(rData[i])) rData[i] = 128.0;
         if (isNaN(gData[i]) || !isFinite(gData[i])) gData[i] = 128.0;
         if (isNaN(bData[i]) || !isFinite(bData[i])) bData[i] = 128.0;
@@ -319,11 +403,6 @@ function reconstructImage(processedChannels, dstUint8, numPixels, filter) {
         if (bData[i] > globalMax) globalMax = bData[i];
     }
 
-    /**
-     * MEJORA VISUAL POST-PROCESAMIENTO (Objetivo 4)
-     * El reescalado lineal global mapea los resultados flotantes devueltos por el pipeline estadístico
-     * al rango entero cuantizado [0, 255]. Es una adaptación para visualización en pantallas, no añade datos.
-     */
     let globalRange = globalMax - globalMin;
     if (globalRange < 1e-5) globalRange = 1e-5; 
 
