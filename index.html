@@ -446,7 +446,7 @@
             <h1>ArqueoStretch</h1>
             <p>Herramienta modular para el realce y análisis de pinturas rupestres</p>
             <div class="header-links">
-                <span id="versionLabel" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.7;">v1.2.1</span>
+                <span id="versionLabel" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.7;">v0.2.</span>
                 <a href="https://github.com/adrianxdd7/ArqueoStretch" target="_blank" rel="noopener noreferrer" class="btn-github">
                     <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
                     Ver en GitHub
@@ -543,14 +543,16 @@
         <div id="wrapperProfesional" class="hidden"></div>
 
         <div id="wrapperSimple" class="controls-card">
-            <label class="setting-label" for="presetSelect">Presets de Análisis Rápido (Basados en DStretch / J. Harman)</label>
+            <label class="setting-label" for="presetSelect">Presets de análisis rápido</label>
             <select id="presetSelect">
-                <option value="crgb">🔴 CRGB - Realce de pigmentos rojos (Matriz fija con supresión de fondo)</option>
-                <option value="yds">🟡 YDS - Realce general y pigmentos amarillos tenues</option>
-                <option value="ybr">🥊 YBR - Intensificación de pigmentos rojos</option>
-                <option value="ybk">⚫ YBK - Pigmentos negros, azules y amarillos</option>
-                <option value="lds">🌾 LDS - Realce general y amarillos en espacio LAB</option>
-                <option value="lre">🌺 LRE - Realce especializado de pigmentos rojos (LAB)</option>
+                <option value="rojo_oxido">🔴 Rojo óxido / Hematita tenue</option>
+                <option value="rojo_degradado">🦬 Rojo degradado o lavado (fondo similar)</option>
+                <option value="amarillo_tenue">🟡 Amarillo, ocre o calcita velada</option>
+                <option value="negro_carbon">⚫ Carbón vegetal / Negro desvaído</option>
+                <option value="superposicion_colores">🥪 Superposición de colores (varias capas)</option>
+                <option value="grabados_relieve">🟤 Grabados e incisiones (microrelieve)</option>
+				<option value="textura_erosionada">🌧 Textura erosionada / Contornos difusos</option>
+				<option value="alto_contraste">☀️ Luz solar dura / Sombras profundas</option>
             </select>
 
             <div class="control-group" style="margin-top: 8px;">
@@ -757,7 +759,7 @@
     </div>
 
     <script>
-        const APP_VERSION = "1.2.1";
+        const APP_VERSION = "0.2";
 
         const ImageLoader = {
             async processUploadedFile(file) {
@@ -1478,14 +1480,15 @@
             isHoldingOriginal: false,
             offscreenCanvas: null, 
 
-            // Presets diseñados y documentados por Jon Harman, Ph.D. para DStretch
             presets: {
-                crgb: { filter: 'pca_rgb', intensity: 120, black: 20, gamma: 90, white: 235 },
-                yds:  { filter: 'yuv_stretch', intensity: 85, black: 10, gamma: 110, white: 245 },
-                ybr:  { filter: 'yuv_stretch', intensity: 140, black: 15, gamma: 100, white: 240 },
-                ybk:  { filter: 'yuv_stretch', intensity: 95, black: 30, gamma: 120, white: 230 },
-                lds:  { filter: 'pca_rgb', intensity: 90, black: 10, gamma: 105, white: 250 },
-                lre:  { filter: 'pca_rgb', intensity: 150, black: 10, gamma: 95, white: 245 }
+                rojo_oxido: { filter: 'pca_rgb', intensity: 110, black: 15, gamma: 95, white: 240 },
+                rojo_degradado:  { filter: 'yuv_stretch', intensity: 160, black: 5, gamma: 115, white: 250 },
+                amarillo_tenue:  { filter: 'yuv_stretch', intensity: 75, black: 30, gamma: 75, white: 220 },
+                negro_carbon:  { filter: 'yuv_stretch', intensity: 50, black: 60, gamma: 140, white: 210 },
+                superposicion_colores:  { filter: 'yuv_stretch', intensity: 120, black: 0, gamma: 175, white: 255 },
+                grabados_relieve:  { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 }
+				textura_erosionada: { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 }
+				alto_contraste: { filter: 'pca_rgb', intensity: 85, black: 45, gamma: 65, white: 215 }
             },
 
             init() {
