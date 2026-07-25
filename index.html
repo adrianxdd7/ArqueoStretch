@@ -63,6 +63,33 @@
         header h1 { font-size: 1.8rem; margin: 0 0 4px 0; font-weight: 700; }
         header p { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
 
+        .header-links {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 6px;
+        }
+
+        .btn-github {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #18181b;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.15s ease;
+        }
+
+        .btn-github:hover {
+            background: #27272a;
+        }
+
         body.clean-screen header,
         body.clean-screen .controls-card,
         body.clean-screen #wrapperSimple.hidden ~ .pro-card,
@@ -315,6 +342,18 @@
         #wrapperSimple.hidden ~ #configLibraryCard .pro-only { display: block !important; }
         #wrapperSimple.hidden ~ #configLibraryCard .simple-only { display: none !important; }
 
+        .ack-list {
+            margin: 0;
+            padding-left: 18px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .ack-list li {
+            margin-bottom: 6px;
+        }
+
         @media (max-width: 600px) {
             body {
                 padding: 8px;
@@ -406,7 +445,13 @@
         <header>
             <h1>ArqueoStretch</h1>
             <p>Herramienta modular para el realce y análisis de pinturas rupestres</p>
-            <p id="versionLabel" style="font-size: 0.7rem; color: var(--text-muted); margin-top: 4px; opacity: 0.7;">v1.2.0</p>
+            <div class="header-links">
+                <span id="versionLabel" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.7;">v1.2.1</span>
+                <a href="https://github.com/adrianxdd7/ArqueoStretch" target="_blank" rel="noopener noreferrer" class="btn-github">
+                    <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+                    Ver en GitHub
+                </a>
+            </div>
         </header>
 
         <div class="tabs-wrapper">
@@ -498,16 +543,14 @@
         <div id="wrapperProfesional" class="hidden"></div>
 
         <div id="wrapperSimple" class="controls-card">
-            <label class="setting-label" for="presetSelect">Presets de Análisis Rápido</label>
+            <label class="setting-label" for="presetSelect">Presets de Análisis Rápido (Basados en DStretch / J. Harman)</label>
             <select id="presetSelect">
-                <option value="pigmento_rojo">🎨 Pigmento rojo tenue (óxidos de hierro)</option>
-                <option value="rojo_degradado">🦬 Pintura roja degradada (fina o lavada)</option>
-                <option value="blanco">⚪ Pintura blanca / Calcita velada</option>
-                <option value="carbon">⚫ Carbón / Negro orgánico</option>
-                <option value="grabados">🟤 Grabados poco profundos (Microrelieve DoG)</option>
-                <option value="erosionada">🌧 Superficie muy erosionada (Microtexturas)</option>
-                <option value="alto_contraste">☀️ Alto contraste solar / Sombras duras</option>
-                <option value="baja_luz">🌫 Baja iluminación de abrigo / Cuevas</option>
+                <option value="crgb">🔴 CRGB - Realce de pigmentos rojos (Matriz fija con supresión de fondo)</option>
+                <option value="yds">🟡 YDS - Realce general y pigmentos amarillos tenues</option>
+                <option value="ybr">🥊 YBR - Intensificación de pigmentos rojos</option>
+                <option value="ybk">⚫ YBK - Pigmentos negros, azules y amarillos</option>
+                <option value="lds">🌾 LDS - Realce general y amarillos en espacio LAB</option>
+                <option value="lre">🌺 LRE - Realce especializado de pigmentos rojos (LAB)</option>
             </select>
 
             <div class="control-group" style="margin-top: 8px;">
@@ -690,6 +733,16 @@
             </div>
         </div>
 
+        <div class="controls-card" style="border-left: 3px solid var(--success);">
+            <label class="setting-label" style="color:var(--text-main); margin-bottom: 4px;">🙏 Agradecimientos y créditos</label>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.4;">
+                Los fundamentos metodológicos y los espacios de color de esta aplicación están basados en las investigaciones de Jon Harman desarrolladas en el programa DStretch®:
+            </p>
+            <ul class="ack-list">
+                <li><strong>Jon Harman, Ph.D.:</strong> Por ser el creador del algoritmo adaptado al arte rupestre e idear las matrices de descorrelación y espacios de color (CRGB, YDS, YBR, YBK, LDS, LRE).</li>
+            </ul>
+        </div>
+
         <div class="telemetry-panel">
             <div class="telemetry-row"><span>Estado de operación:</span><span id="telStatus" style="color:#22c55e;" aria-live="polite">Inicializando subsistemas...</span></div>
             <div class="telemetry-row"><span>Resolución nativa:</span><span id="telResolution">-</span></div>
@@ -704,7 +757,7 @@
     </div>
 
     <script>
-        const APP_VERSION = "1.2.0";
+        const APP_VERSION = "1.2.1";
 
         const ImageLoader = {
             async processUploadedFile(file) {
@@ -1425,15 +1478,14 @@
             isHoldingOriginal: false,
             offscreenCanvas: null, 
 
+            // Presets diseñados y documentados por Jon Harman, Ph.D. para DStretch
             presets: {
-                pigmento_rojo:   { filter: 'pca_rgb', intensity: 110, black: 15, gamma: 95, white: 240 },
-                rojo_degradado:  { filter: 'yuv_stretch', intensity: 160, black: 5, gamma: 115, white: 250 },
-                blanco:          { filter: 'yuv_stretch', intensity: 75, black: 30, gamma: 75, white: 220 },
-                carbon:          { filter: 'pca_rgb', intensity: 50, black: 60, gamma: 140, white: 210 },
-                grabados:        { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
-                erosionada:      { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
-                alto_contraste:  { filter: 'pca_rgb', intensity: 85, black: 45, gamma: 65, white: 215 },
-                baja_luz:        { filter: 'yuv_stretch', intensity: 120, black: 0, gamma: 175, white: 255 }
+                crgb: { filter: 'pca_rgb', intensity: 120, black: 20, gamma: 90, white: 235 },
+                yds:  { filter: 'yuv_stretch', intensity: 85, black: 10, gamma: 110, white: 245 },
+                ybr:  { filter: 'yuv_stretch', intensity: 140, black: 15, gamma: 100, white: 240 },
+                ybk:  { filter: 'yuv_stretch', intensity: 95, black: 30, gamma: 120, white: 230 },
+                lds:  { filter: 'pca_rgb', intensity: 90, black: 10, gamma: 105, white: 250 },
+                lre:  { filter: 'pca_rgb', intensity: 150, black: 10, gamma: 95, white: 245 }
             },
 
             init() {
