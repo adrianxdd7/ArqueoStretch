@@ -184,7 +184,7 @@ function decorrelationStretch(channels, means, numPixels, targetStd, filter, roi
     const out2 = getCacheArray('out2', numPixels);
     const out3 = getCacheArray('out3', numPixels);
 
-    // MATRIZ FIJA CRGB (Sin PCA, multiplicación directa de DStretch)
+    // MATRIZ FIJA CRGB (Sin PCA, multiplicación directa DStretch)
     if (filter === 'crgb') {
         const scale = targetStd / 10.0;
         const m00 = 0.37 * scale,  m01 = 0.34 * scale,  m02 = 0.30 * scale;
@@ -203,7 +203,6 @@ function decorrelationStretch(channels, means, numPixels, targetStd, filter, roi
         return [out1, out2, out3];
     }
 
-    // Ajuste de escala para espacio LRE (DStretch reduce la escala a la mitad por alta sensibilidad)
     let effectiveTargetStd = targetStd;
     if (filter === 'lre') effectiveTargetStd *= 0.5;
 
@@ -260,7 +259,7 @@ function decorrelationStretch(channels, means, numPixels, targetStd, filter, roi
         }
     }
 
-    // Rotación PCA -> Estiramiento -> Map Back (Rotación Inversa)
+    // Rotación PCA -> Estiramiento -> Map Back
     for (let i = 0; i < numPixels; i++) {
         const v1 = ch1[i] - m1; const v2 = ch2[i] - m2; const v3 = ch3[i] - m3;
         
@@ -314,7 +313,7 @@ function jacobiEigenDecomposition(A) {
 }
 
 // -------------------------------------------------------------------------
-// MAPEO INVERSO Y RECONSTRUCCIÓN A RGB DE SALIDA
+// MAPEO INVERSO Y RECONSTRUCCIÓN A RGB DE SALIDA (ESTILO DSTRETCH)
 // -------------------------------------------------------------------------
 function reconstructImage(processedChannels, means, dstUint8, numPixels, filter) {
     const rData = getCacheArray('rData', numPixels);
@@ -388,29 +387,33 @@ function reconstructImage(processedChannels, means, dstUint8, numPixels, filter)
         bData.set(processedChannels[2]);
     }
 
-    let globalMin = Infinity, globalMax = -Infinity;
+    // Normalización independiente por canal para resaltar de forma limpia y muy viva el pigmento rojo (estilo DStretch)
+    let rMin = Infinity, rMax = -Infinity;
+    let gMin = Infinity, gMax = -Infinity;
+    let bMin = Infinity, bMax = -Infinity;
+
     for (let i = 0; i < numPixels; i++) {
         if (isNaN(rData[i]) || !isFinite(rData[i])) rData[i] = 128.0;
         if (isNaN(gData[i]) || !isFinite(gData[i])) gData[i] = 128.0;
         if (isNaN(bData[i]) || !isFinite(bData[i])) bData[i] = 128.0;
 
-        if (rData[i] < globalMin) globalMin = rData[i];
-        if (gData[i] < globalMin) globalMin = gData[i];
-        if (bData[i] < globalMin) globalMin = bData[i];
-
-        if (rData[i] > globalMax) globalMax = rData[i];
-        if (gData[i] > globalMax) globalMax = gData[i];
-        if (bData[i] > globalMax) globalMax = bData[i];
+        if (rData[i] < rMin) rMin = rData[i];
+        if (rData[i] > rMax) rMax = rData[i];
+        if (gData[i] < gMin) gMin = gData[i];
+        if (gData[i] > gMax) gMax = gData[i];
+        if (bData[i] < bMin) bMin = bData[i];
+        if (bData[i] > bMax) bMax = bData[i];
     }
 
-    let globalRange = globalMax - globalMin;
-    if (globalRange < 1e-5) globalRange = 1e-5; 
+    const rRange = Math.max(1e-5, rMax - rMin);
+    const gRange = Math.max(1e-5, gMax - gMin);
+    const bRange = Math.max(1e-5, bMax - bMin);
 
     for (let i = 0; i < numPixels; i++) {
         const idx = i * 4;
-        dstUint8[idx]     = Math.min(255, Math.max(0, Math.round(((rData[i] - globalMin) / globalRange) * 255.0)));
-        dstUint8[idx + 1] = Math.min(255, Math.max(0, Math.round(((gData[i] - globalMin) / globalRange) * 255.0)));
-        dstUint8[idx + 2] = Math.min(255, Math.max(0, Math.round(((bData[i] - globalMin) / globalRange) * 255.0)));
+        dstUint8[idx]     = Math.min(255, Math.max(0, Math.round(((rData[i] - rMin) / rRange) * 255.0)));
+        dstUint8[idx + 1] = Math.min(255, Math.max(0, Math.round(((gData[i] - gMin) / gRange) * 255.0)));
+        dstUint8[idx + 2] = Math.min(255, Math.max(0, Math.round(((bData[i] - bMin) / bRange) * 255.0)));
         dstUint8[idx + 3] = 255;
     }
 }
