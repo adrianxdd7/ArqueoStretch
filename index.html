@@ -20,6 +20,7 @@
             --success: #16a34a;
             --danger: #ef4444;
             --danger-hover: #dc2626;
+            --left-width: 55%;
         }
 
         body {
@@ -33,6 +34,16 @@
             align-items: center;
             min-height: 100vh;
             box-sizing: border-box;
+        }
+
+        /* Bloqueo total de scroll en pantalla limpia */
+        html:has(body.clean-screen),
+        body.clean-screen {
+            overflow: hidden !important;
+            height: 100vh !important;
+            position: fixed;
+            width: 100%;
+            touch-action: none;
         }
 
         button {
@@ -90,15 +101,22 @@
             background: #27272a;
         }
 
+        /* Ocultar elementos principales en modo pantalla limpia */
         body.clean-screen header,
         body.clean-screen .controls-card,
         body.clean-screen #wrapperSimple.hidden ~ .pro-card,
         body.clean-screen .histogram-container,
         body.clean-screen .tabs-wrapper,
+        body.clean-screen #cleanScreenBtn,
         body.clean-screen #manualPanel,
         body.clean-screen #toggleManualBtn,
         body.clean-screen .image-group-buttons,
-        body.clean-screen .telemetry-panel {
+        body.clean-screen .telemetry-panel,
+        body.clean-screen .resizer,
+        body.clean-screen .resizer-v,
+        body.clean-screen #holdViewBtn,
+        body.clean-screen #captureBtn,
+        body.clean-screen #uploadLabel {
             display: none !important;
         }
 
@@ -113,28 +131,82 @@
         body.clean-screen .viewer-card {
             aspect-ratio: auto;
             flex-grow: 1;
-            height: calc(100vh - 80px);
+            height: calc(100vh - 120px) !important;
+            max-height: none !important;
         }
 
+        /* Barra flotante de pantalla limpia */
         .clean-bar {
             display: none;
             width: 100%;
             max-width: 900px;
-            background: var(--bg-card);
+            background: rgba(20, 20, 22, 0.95);
+            backdrop-filter: blur(12px);
             border: 1px solid var(--border);
             border-radius: 12px;
             padding: 10px;
             box-sizing: border-box;
-            justify-content: space-between;
-            align-items: center;
-            gap: 10px;
+            flex-direction: column;
+            gap: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
         }
 
         body.clean-screen .clean-bar {
             display: flex !important;
             position: fixed;
             bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
             z-index: 9999;
+            width: calc(100% - 24px);
+        }
+
+        .clean-presets-scroll {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+            scrollbar-width: none;
+        }
+
+        .clean-presets-scroll::-webkit-scrollbar {
+            display: none;
+        }
+
+        .clean-chip {
+            flex: 0 0 auto;
+            background: #27272a;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 6px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .clean-chip.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
+        .clean-actions-row {
+            display: flex;
+            gap: 6px;
+            width: 100%;
+        }
+
+        .clean-actions-row button,
+        .clean-actions-row label {
+            flex: 1;
+            padding: 10px 4px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border-radius: 8px;
+            text-align: center;
         }
 
         .tabs-wrapper {
@@ -169,15 +241,160 @@
             border: 1px solid var(--border);
         }
 
+        /* Preview anclada (Sticky) en Móvil */
         .image-workshop-card {
             background: var(--bg-card);
             border: 1px solid var(--border);
             border-radius: 12px;
-            padding: 16px;
+            padding: 12px;
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 8px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            position: sticky;
+            top: 8px;
+            z-index: 20;
+        }
+
+        /* Barra divisora horizontal en Móvil */
+        .resizer-v {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 14px;
+            cursor: row-resize;
+            user-select: none;
+            touch-action: none;
+            margin-top: 2px;
+            width: 100%;
+        }
+
+        .resizer-v::before {
+            content: '';
+            width: 45px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            transition: background 0.15s ease, width 0.15s ease;
+        }
+
+        .resizer-v:hover::before,
+        .resizer-v.dragging::before {
+            background: var(--accent);
+            width: 70px;
+        }
+
+        .app-left-col, .app-right-col {
+            display: contents;
+        }
+
+        .resizer {
+            display: none;
+        }
+
+        /* MODO ESCRITORIO (PC) */
+        @media (min-width: 1100px) {
+            html, body {
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            body { 
+                padding: 16px; 
+            }
+
+            .container {
+                max-width: 100%;
+                height: calc(100vh - 32px);
+                flex-direction: row;
+                align-items: stretch;
+                gap: 0;
+            }
+
+            .app-left-col {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                flex: 0 0 var(--left-width, 55%);
+                min-width: 300px;
+                max-width: calc(100% - 300px);
+                height: 100%;
+                overflow: hidden;
+            }
+
+            /* Barra divisora vertical para PC */
+            .resizer {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 14px;
+                cursor: col-resize;
+                user-select: none;
+                touch-action: none;
+                z-index: 100;
+                margin: 0 4px;
+                position: relative;
+            }
+
+            .resizer::before {
+                content: '';
+                width: 4px;
+                height: 48px;
+                background: var(--border);
+                border-radius: 2px;
+                transition: background 0.15s ease, height 0.15s ease;
+            }
+
+            .resizer:hover::before,
+            .resizer.dragging::before {
+                background: var(--accent);
+                height: 70px;
+            }
+
+            .resizer-v {
+                display: none !important;
+            }
+
+            .app-right-col {
+                display: flex;
+                flex-direction: column;
+                gap: 14px;
+                flex: 1 1 0;
+                min-width: 300px;
+                height: 100%;
+                overflow-y: auto;
+                padding-left: 4px;
+                padding-right: 6px;
+            }
+
+            .app-right-col::-webkit-scrollbar {
+                width: 6px;
+            }
+            .app-right-col::-webkit-scrollbar-track {
+                background: var(--bg-main);
+            }
+            .app-right-col::-webkit-scrollbar-thumb {
+                background: var(--border);
+                border-radius: 4px;
+            }
+
+            #imageWorkshopCard {
+                position: static !important;
+                top: auto !important;
+                z-index: auto !important;
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                min-height: 0;
+            }
+
+            .viewer-card {
+                flex: 1;
+                height: 100% !important;
+                max-height: none !important;
+                aspect-ratio: auto !important;
+                min-height: 200px;
+            }
         }
 
         .viewer-card {
@@ -188,6 +405,7 @@
             position: relative;
             width: 100%;
             aspect-ratio: 4/3;
+            max-height: 60vh;
             box-shadow: 0 12px 32px rgba(0,0,0,0.7);
             user-select: none;
             touch-action: none;
@@ -221,8 +439,8 @@
             background: #27272a;
             border: 1px solid var(--border);
             color: var(--text-main);
-            padding: 6px 10px;
-            font-size: 0.8rem;
+            padding: 6px 8px;
+            font-size: 0.78rem;
             font-weight: bold;
             border-radius: 6px;
             cursor: pointer;
@@ -231,14 +449,15 @@
 
         .zoom-controls button:hover {
             background: var(--accent);
+            border-color: var(--accent);
         }
 
         .zoom-controls span {
             font-family: monospace;
             font-size: 0.75rem;
             color: var(--text-muted);
-            padding: 0 6px;
-            min-width: 45px;
+            padding: 0 4px;
+            min-width: 40px;
             text-align: center;
         }
 
@@ -299,6 +518,33 @@
         textarea { font-family: monospace; resize: none; font-size: 0.8rem; }
 
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+        .preset-button-grid {
+            display: none;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 4px;
+        }
+
+        .preset-button-grid button {
+            padding: 12px 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-align: center;
+            line-height: 1.25;
+            background: #27272a;
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .preset-button-grid button.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: #fff;
+        }
+
         button.btn-primary { background: var(--accent); color: #fff; border: none; font-weight: 600; cursor: pointer; }
         button.btn-primary:hover { background: var(--accent-hover); }
         button.btn-success { background: var(--success); color: #fff; border: none; font-weight: 600; cursor: pointer; }
@@ -306,10 +552,24 @@
         button.btn-danger:hover { background: var(--danger-hover); }
         
         .btn-hold-view {
-            background: #27272a; color: #ffffff; border: 1px solid #3f3f46;
-            font-weight: 700; cursor: pointer; padding: 14px; font-size: 0.9rem;
-            letter-spacing: 0.5px; border-radius: 8px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-            width: 100%; box-sizing: border-box; text-align: center;
+            background: #27272a; 
+            color: #ffffff; 
+            border: 1px solid #3f3f46;
+            font-weight: 700; 
+            cursor: pointer; 
+            padding: 10px 4px; 
+            font-size: clamp(0.65rem, 3.2vw, 0.85rem);
+            letter-spacing: 0.2px; 
+            border-radius: 8px; 
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
+            width: 100%; 
+            max-width: 100%;
+            box-sizing: border-box; 
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: block;
         }
         .btn-hold-view:active { background: #18181b; }
 
@@ -415,26 +675,13 @@
                 border-radius: 4px;
             }
 
-            body.clean-screen .clean-bar {
-                position: fixed;
-                left: 8px;
-                right: 8px;
-                width: calc(100% - 16px) !important;
-                bottom: 8px;
-                flex-direction: row;
-                gap: 6px;
-                padding: 8px;
+            body:not(.pro-mode-active) #presetSelectLabel,
+            body:not(.pro-mode-active) #presetSelect {
+                display: none;
             }
 
-            body.clean-screen .clean-bar button {
-                flex: 1;
-                width: auto !important;
-                padding: 10px 4px !important;
-                font-size: 0.75rem !important;
-            }
-
-            body.clean-screen .viewer-card {
-                height: calc(100vh - 90px);
+            body:not(.pro-mode-active) .preset-button-grid {
+                display: grid;
             }
         }
     </style>
@@ -442,328 +689,328 @@
 <body>
 
     <div class="container" id="mainContainer">
-        <header>
-            <h1>ArqueoStretch</h1>
-            <p>Herramienta modular para el realce y análisis de pinturas rupestres</p>
-            <div class="header-links">
-                <span id="versionLabel" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.7;">v0.2.</span>
-                <a href="https://github.com/adrianxdd7/ArqueoStretch" target="_blank" rel="noopener noreferrer" class="btn-github">
-                    <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
-                    Ver en GitHub
-                </a>
-            </div>
-        </header>
-
-        <div class="tabs-wrapper">
-            <button class="tab-btn active" id="tabSimple">🪨 Modo simple</button>
-            <button class="tab-btn" id="tabProfesional">🔬 Modo profesional</button>
-        </div>
-
-        <div class="image-workshop-card" id="imageWorkshopCard">
-            <div class="viewer-card" id="viewerCard">
-                <div id="viewportInner" style="width:100%; height:100%; position:relative; transform-origin: 0 0;">
-                    <video id="videoPreview" autoplay playsinline muted aria-label="Vista previa en directo de la cámara"></video>
-                    <canvas id="canvasView" class="hidden" role="img" aria-label="Vista previa de la imagen procesada en tiempo real"></canvas>
-                    <div id="roiOverlay" class="hidden" style="position:absolute; border:2px dashed #22c55e; background:rgba(34,197,94,0.15); pointer-events:none; box-sizing:border-box;"></div>
+        <!-- Columna Izquierda (Preview y Entradas) -->
+        <div class="app-left-col">
+            <header>
+                <h1>ArqueoStretch</h1>
+                <p>Herramienta modular para el realce y análisis de pinturas rupestres</p>
+                <div class="header-links">
+                    <span id="versionLabel" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.7;">v0.2</span>
+                    <a href="https://github.com/adrianxdd7/ArqueoStretch" target="_blank" rel="noopener noreferrer" class="btn-github">
+                        <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+                        Ver en GitHub
+                    </a>
                 </div>
+            </header>
 
-                <div class="zoom-controls">
-                    <button id="zoomOutBtn" title="Alejar (-)">➖</button>
-                    <span id="zoomLevelLabel">100%</span>
-                    <button id="zoomInBtn" title="Acercar (+)">➕</button>
-                    <button id="zoomResetBtn" title="Restablecer (1:1)">🔁</button>
-                </div>
+            <div class="tabs-wrapper">
+                <button class="tab-btn active" id="tabSimple">🪨 Modo simple</button>
+                <button class="tab-btn" id="tabProfesional">🔬 Modo profesional</button>
             </div>
 
-            <div class="image-group-buttons">
-                <div class="control-group" style="margin-bottom: 10px;">
-                    <button id="holdViewBtn" class="btn-hold-view">👁️ MANTÉN PULSADO PARA VER EL ORIGINAL</button>
-                </div>
+            <button id="cleanScreenBtn" style="width:100%; background:#3f3f46; font-weight:600; font-size:0.82rem; padding:10px; color:#fff; border:none; border-radius:8px; cursor:pointer; margin-bottom: 2px;">📱 PANTALLA LIMPIA</button>
 
-                <div class="grid-2">
-                    <button id="captureBtn" class="btn-primary">📸 CAPTURAR SENSOR (CÁMARA)</button>
-                    <label id="uploadLabel" for="uploadInput" style="background:#1e1e20; text-align:center; cursor:pointer; padding:14px; border-radius:10px; font-size:0.85rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center;">📂 IMPORTAR IMAGEN
-                        <input type="file" id="uploadInput" accept="image/*" class="hidden">
-                    </label>
-                </div>
-            </div>
-        </div>
-
-        <button id="toggleManualBtn" class="hidden" style="background: #1e1e20; border: 1px solid var(--border); color: var(--text-main); font-weight: 600; padding: 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; width:100%;">ℹ Información sobre algoritmos</button>
-
-        <div id="manualPanel" class="controls-card hidden" style="border-left: 3px solid var(--accent);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <label class="setting-label" style="color:var(--text-main);">Manual técnico y de interpretación</label>
-                <button id="closeManualBtn" style="padding:4px 8px; font-size:0.75rem; background:#27272a; border:none; border-radius:4px; cursor:pointer;">Cerrar ✕</button>
-            </div>
-            
-            <div style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
-                <div class="manual-card">
-                    <h4 style="margin:0 0 6px 0; font-size:0.85rem;">1. PCA Stretch RGB (Matriz sRGB lineal)</h4>
-                    <div class="manual-header">Explicación técnica</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Calcula los autovectores ortogonales de la matriz de covarianza en canales RGB descorrelacionando la información espectral para aplicar un estiramiento lineal extremo.</p>
-                    <div class="manual-header">Explicación para usuarios</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Maximiza el contraste cromático de restos degradados de arte rupestre (óxidos de hierro) frente al soporte calizo de la cueva.</p>
-                    <div class="manual-header">Limitaciones</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Los colores obtenidos son abstractos y no representan tonalidades reales. Puede amplificar drásticamente el ruido cromático. No demuestra de forma aislada la existencia de pigmento antrópico ni sustituye la interpretación y diagnóstico arqueológico directo.</p>
-                </div>
-
-                <div class="manual-card">
-                    <h4 style="margin:0 0 6px 0; font-size:0.85rem;">2. PCA Stretch YCbCr (BT.601)</h4>
-                    <div class="manual-header">Explicación técnica</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Transforma los datos aislando la luminancia antes de procesar la varianza estadística estrictamente sobre los componentes de crominancia pura.</p>
-                    <div class="manual-header">Explicación para usuarios</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Útil para discriminar trazos superpuestos o pinturas en abrigos expuestos a condiciones de iluminación solar muy irregular.</p>
-                    <div class="manual-header">Limitaciones</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Genera composiciones de falso color extremo. Las tonalidades son métricas analíticas abstractas y no corresponden a estados cromáticos históricos reales de las pátinas o soportes.</p>
-                </div>
-
-                <div class="manual-card">
-                    <h4 style="margin:0 0 6px 0; font-size:0.85rem;">3. Difference of Gaussians (DoG 2D)</h4>
-                    <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Explicación técnica</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Filtro espacial convolucional de paso de banda obtenido restando dos matrices desenfocadas con radios gaussianos dispares.</p>
-                    <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Explicación para usuarios</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Permite delimitar la morfología de grabados rupestres someros, piqueteados o incisiones en micro-relieve sobre piedra.</p>
-                    <div class="manual-section-title" style="font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase;">Limitaciones</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Resalta de manera indiscriminate grietas geológicas naturales, líquenes, exfoliaciones y ruido de textura. No diferencia automáticamente entre la acción antrópica y las alteraciones del soporte.</p>
-                </div>
-
-                <div class="manual-card">
-                    <h4 style="margin:0 0 6px 0; font-size:0.85rem;">4. Unsharp Mask (Máscara de enfoque GPU)</h4>
-                    <div class="manual-header">Explicación técnica</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Sustrae una máscara de baja frecuencia y reinyecta el residuo amplificado para potenciar contrastes locales de alta frecuencia.</p>
-                    <div class="manual-header">Explicación para usuarios</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Ayuda a enfocar contornos desvaídos o trazos geométricos finos ejecutados con carbón vegetal degradado.</p>
-                    <div class="manual-header">Limitaciones</div>
-                    <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Puede exagerar sustancialmente el ruido digital térmico en tomas subexpuestas. No incrementa bajo ningún concepto la resolución óptica o el nivel de detalle geométrico real capturado por el sensor.</p>
-                </div>
-            </div>
-        </div>
-
-        <div id="wrapperProfesional" class="hidden"></div>
-
-        <div id="wrapperSimple" class="controls-card">
-            <label class="setting-label" for="presetSelect">Presets de análisis rápido</label>
-            <select id="presetSelect">
-                <option value="rojo_oxido">🔴 Rojo óxido / Hematita tenue</option>
-                <option value="rojo_degradado">🦬 Rojo degradado o lavado (fondo similar)</option>
-                <option value="amarillo_tenue">🟡 Amarillo, ocre o calcita velada</option>
-                <option value="negro_carbon">⚫ Carbón vegetal / Negro desvaído</option>
-                <option value="superposicion_colores">🥪 Superposición de colores (varias capas)</option>
-                <option value="grabados_relieve">🟤 Grabados e incisiones (microrelieve)</option>
-				<option value="textura_erosionada">🌧 Textura erosionada / Contornos difusos</option>
-				<option value="alto_contraste">☀️ Luz solar dura / Sombras profundas</option>
-            </select>
-
-            <div class="control-group" style="margin-top: 8px;">
-                <label class="setting-label" for="favSelectSimple">⭐ Mis presets guardados</label>
-                <div class="fav-row">
-                    <select id="favSelectSimple">
-                        <option value="">-- Usar una configuración guardada --</option>
-                    </select>
-                    <button id="deleteFavBtnSimple" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="controls-card pro-card" id="proCardProcessing">
-            <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">1. Configuración del procesamiento</label>
-            <div class="control-group">
-                <label class="setting-label" for="filterSelect">Algoritmo de procesamiento seleccionado</label>
-                <select id="filterSelect">
-					<option value="yds">YDS - General / Amarillos (Espacio YXX)</option>
-					<option value="ybr">YBR - Rojos (Espacio YXX)</option>
-					<option value="ybk">YBK - Negros (Espacio YXX)</option>
-					<option value="yre">YRE - Rojos muy degradados (Espacio YXX)</option>
-					<option value="lab">LAB - General / Sombras (Espacio LXX)</option>
-					<option value="lds">LDS - Amarillos (Espacio LXX)</option>
-					<option value="lre">LRE - Rojos tenues (Espacio LXX)</option>
-					<option value="crgb">CRGB - Matriz fija rápida para rojos</option>
-					<option value="pca_rgb">PCA Stretch estándar (sRGB Lineal)</option>
-					<option value="yuv_stretch">PCA Stretch YCbCr (BT.601)</option>
-					<option value="dog">Filtro estructural: Difference of Gaussians (DoG 2D)</option>
-					<option value="unsharp_mask">Realce de micro-textura: Unsharp Mask (GPU)</option>
-				</select>
-            </div>
-
-            <div class="control-group" id="roiControlGroup" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
-                <label class="setting-label" style="color:var(--text-main);">🎯 Ajustar el cálculo de color a una zona (como en DStretch)</label>
-                <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0 0 6px 0; line-height: 1.3;">
-                    Dibuja un recuadro solo sobre la pintura para que el PCA calcule los colores a partir de esa zona, en vez de toda la foto. Suele separar mucho mejor el pigmento del soporte. Solo afecta a los modos PCA Stretch (RGB / YCbCr).
-                </p>
-                <div class="grid-2">
-                    <button id="roiSelectModeBtn" type="button" aria-pressed="false" style="padding:10px; font-size:0.8rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">🖊️ Dibujar selección</button>
-                    <button id="roiClearBtn" type="button" style="padding:10px; font-size:0.8rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">🗑️ Quitar selección</button>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
-                    <input type="checkbox" id="useRoiCheck" disabled style="width:16px; height:16px;">
-                    <label for="useRoiCheck" style="font-size:0.78rem; color:var(--text-main);">Usar la selección para calcular los colores</label>
-                </div>
-            </div>
-
-            <div class="control-group" style="margin-top: 6px;">
-                <label class="setting-label" id="labelIntensity">Intensidad del estiramiento PCA</label>
-                <input type="range" id="intensitySlider" min="5" max="250" value="70">
-                <p id="pcaHelpText" style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0 0 0; line-height: 1.3;">
-                    Controla cuánto se amplifican las diferencias cromáticas obtenidas mediante PCA.<br>
-                    Valores elevados también pueden aumentar el ruido.
-                </p>
-            </div>
-
-            <div class="control-group" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
-                <label class="setting-label">Visualización y niveles estéticos</label>
-                <div class="levels-sliders">
-                    <div class="level-row">
-                        <span>Punto negro:</span>
-                        <input type="range" id="sliderBlack" min="0" max="255" value="0">
-                        <span id="valBlack">0</span>
+            <!-- Tarjeta Anclada (Sticky) limpia -->
+            <div class="image-workshop-card" id="imageWorkshopCard">
+                <div class="viewer-card" id="viewerCard">
+                    <div id="viewportInner" style="width:100%; height:100%; position:relative; transform-origin: 0 0;">
+                        <video id="videoPreview" autoplay playsinline muted aria-label="Vista previa en directo de la cámara"></video>
+                        <canvas id="canvasView" class="hidden" role="img" aria-label="Vista previa de la imagen procesada en tiempo real"></canvas>
+                        <div id="roiOverlay" class="hidden" style="position:absolute; border:2px dashed #22c55e; background:rgba(34,197,94,0.15); pointer-events:none; box-sizing:border-box;"></div>
                     </div>
-                    <div class="level-row">
-                        <span>Gamma / Gris:</span>
-                        <input type="range" id="sliderGamma" min="10" max="300" value="100">
-                        <span id="valGamma">1.00</span>
-                    </div>
-                    <div class="level-row">
-                        <span>Punto blanco:</span>
-                        <input type="range" id="sliderWhite" min="0" max="255" value="255">
-                        <span id="valWhite">255</span>
+
+                    <div class="zoom-controls">
+                        <button id="zoomOutBtn" title="Alejar (-)">➖</button>
+                        <span id="zoomLevelLabel">100%</span>
+                        <button id="zoomInBtn" title="Acercar (+)">➕</button>
+                        <button id="zoomResetBtn" title="Restablecer (1:1)">🔁</button>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <div class="controls-card" id="configLibraryCard">
-            <div class="pro-only">
-                <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">2. Biblioteca de configuraciones</label>
-                <div class="control-group" style="margin-bottom: 12px;">
-                    <label class="setting-label">Biblioteca de configuraciones local</label>
-                    <div class="fav-row">
-                        <select id="favSelectPro">
-                            <option value="">-- Seleccionar guardado --</option>
-                        </select>
-                        <button id="deleteFavBtnPro" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
-                        <button id="saveFavBtn" style="padding:12px; background:#27272a; font-size:0.8rem; font-weight:600;">💾 Guardar actual</button>
-                    </div>
-                    <div class="grid-2" style="margin-top: 8px;">
-                        <button id="exportLibraryBtn" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">📤 Exportar biblioteca</button>
-                        <label for="importLibraryInput" style="background:#27272a; text-align:center; cursor:pointer; padding:10px; border-radius:8px; font-size:0.78rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center;">
-                            📥 Importar biblioteca
-                            <input type="file" id="importLibraryInput" accept=".json" class="hidden">
-                        </label>
-                    </div>
-                </div>
+                <button id="holdViewBtn" class="btn-hold-view">👁️ MANTÉN PULSADO PARA VER EL ORIGINAL</button>
+                
+                <!-- Barra divisora horizontal en Móvil -->
+                <div class="resizer-v" id="resizerV" title="Arrastra hacia arriba/abajo para ajustar la preview"></div>
             </div>
 
-            <div class="simple-only">
-                <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">Transferencia y documentación</label>
-            </div>
-
-            <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
-                <label class="setting-label" style="color:var(--accent);">📋 Código de configuración rápida (ASW1)</label>
-                <textarea id="shareCodeField" rows="2" placeholder="Pegue aquí un código (ASW1:...) o genere uno desde su matriz activa..." style="width:100%; box-sizing:border-box; background:#101012; color:var(--text-main); border:1px solid var(--border); padding:6px; border-radius:6px;"></textarea>
-                <div class="grid-2" style="margin-top: 4px;">
-                    <button id="btnGenerateCode" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">Generar código</button>
-                    <button id="btnApplyCode" style="padding:10px; font-size:0.78rem; background:var(--accent); font-weight:600; color:#fff; border:none; border-radius:8px; cursor:pointer;">Aplicar código</button>
-                </div>
-                <button id="btnCopyCode" style="margin-top:4px; padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer; width:100%;">📋 Copiar código</button>
-            </div>
-
-            <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
-                <label class="setting-label" style="color:var(--success);">📂 Cargar parámetros desde archivo (.JSON)</label>
-                <label for="importJsonInput" style="background:#1e1e20; text-align:center; cursor:pointer; padding:12px; border-radius:8px; font-size:0.82rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
-                    📥 SELECCIONAR ARCHIVO CONFIG.JSON
-                    <input type="file" id="importJsonInput" accept=".json" class="hidden">
+            <!-- Botones de Captura e Importación -->
+            <div class="grid-2" style="margin-top: 2px;">
+                <button id="captureBtn" class="btn-primary">📸 CAPTURAR SENSOR (CÁMARA)</button>
+                <label id="uploadLabel" for="uploadInput" style="background:#1e1e20; text-align:center; cursor:pointer; padding:12px; border-radius:8px; font-size:0.85rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center;">📂 IMPORTAR IMAGEN
+                    <input type="file" id="uploadInput" accept="image/*" class="hidden">
                 </label>
             </div>
         </div>
 
-        <div class="controls-card pro-card" id="histogramUI" style="padding: 14px; margin: 0; border: 1px solid var(--border);">
-            <label class="setting-label" style="color:var(--text-main); margin-bottom:2px;">3. Análisis estadístico</label>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 4px 0; line-height: 1.2;">HISTOGRAMA DE LA IMAGEN PROCESADA: Distribución estadística tras aplicar el procesamiento seleccionado.</p>
-            
-            <canvas id="histogramCanvas"></canvas>
-            
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-family: monospace; font-size: 0.72rem; color: var(--text-muted); padding-top: 4px;">
-                <div>Media: <span id="lblMean" style="color: var(--text-main); font-weight: 600;">-</span></div>
-                <div>Desv. estándar: <span id="lblStd" style="color: var(--text-main); font-weight: 600;">-</span></div>
-                <div>Valor mínimo: <span id="lblMin" style="color: var(--text-main); font-weight: 600;">-</span></div>
-                <div>Valor máximo: <span id="lblMax" style="color: var(--text-main); font-weight: 600;">-</span></div>
-            </div>
-        </div>
+        <!-- Barra divisora vertical (PC) -->
+        <div class="resizer" id="resizer" title="Arrastra hacia los lados para ajustar tamaño"></div>
 
-        <div id="exportZone" class="controls-card" style="padding: 14px; margin: 0; border: 1px solid var(--border); background: var(--bg-card); display: flex; flex-direction: column; gap: 8px;">
-            <div class="pro-only"><label class="setting-label" style="color:var(--text-main);">4. Exportación</label></div>
-            <div class="simple-only"><label class="setting-label" style="color:var(--text-main);">Exportación final de datos</label></div>
-            
-            <div class="control-group">
-                <label class="setting-label" for="exportProjectName">Nombre del proyecto / exportación</label>
-                <input type="text" id="exportProjectName" placeholder="Ej. Abrigo_Cueva_Pintura1 (Vacío para Auto-Fecha)">
+        <!-- Columna Derecha (Ajustes y Menús) -->
+        <div class="app-right-col">
+            <button id="toggleManualBtn" class="hidden" style="background: #1e1e20; border: 1px solid var(--border); color: var(--text-main); font-weight: 600; padding: 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; width:100%;">ℹ Información sobre algoritmos</button>
+
+            <div id="manualPanel" class="controls-card hidden" style="border-left: 3px solid var(--accent);">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <label class="setting-label" style="color:var(--text-main);">Manual técnico y de interpretación</label>
+                    <button id="closeManualBtn" style="padding:4px 8px; font-size:0.75rem; background:#27272a; border:none; border-radius:4px; cursor:pointer;">Cerrar ✕</button>
+                </div>
+                
+                <div style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
+                    <div class="manual-card">
+                        <h4 style="margin:0 0 6px 0; font-size:0.85rem;">1. PCA Stretch RGB (Matriz sRGB lineal)</h4>
+                        <div class="manual-header">Explicación técnica</div>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Calcula los autovectores ortogonales de la matriz de covarianza en canales RGB descorrelacionando la información espectral para aplicar un estiramiento lineal extremo.</p>
+                        <div class="manual-header">Explicación para usuarios</div>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Maximiza el contraste cromático de restos degradados de arte rupestre (óxidos de hierro) frente al soporte calizo de la cueva.</p>
+                        <div class="manual-header">Limitaciones</div>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Los colores obtenidos son abstractos y no representan tonalidades reales. Puede amplificar drásticamente el ruido cromático.</p>
+                    </div>
+
+                    <div class="manual-card">
+                        <h4 style="margin:0 0 6px 0; font-size:0.85rem;">2. PCA Stretch YCbCr (BT.601)</h4>
+                        <div class="manual-header">Explicación técnica</div>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Transforma los datos aislando la luminancia antes de procesar la varianza estadística estrictamente sobre los componentes de crominancia pura.</p>
+                        <div class="manual-header">Explicación para usuarios</div>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Útil para discriminar trazos superpuestos o pinturas en abrigos expuestos a condiciones de iluminación solar muy irregular.</p>
+                    </div>
+
+                    <div class="manual-card">
+                        <h4 style="margin:0 0 6px 0; font-size:0.85rem;">3. Difference of Gaussians (DoG 2D)</h4>
+                        <div class="manual-header">Explicación técnica</div>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Filtro espacial convolucional de paso de banda obtenido restando dos matrices desenfocadas con radios gaussianos dispares.</p>
+                        <div class="manual-header">Explicación para usuarios</div>
+                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Permite delimitar la morfología de grabados rupestres someros, piqueteados o incisiones en micro-relieve sobre piedra.</p>
+                    </div>
+                </div>
             </div>
 
-            <div id="advancedExportSelectors" class="grid-2">
+            <div id="wrapperSimple" class="controls-card">
+                <label class="setting-label" for="presetSelect" id="presetSelectLabel">Presets de análisis rápido</label>
+                <select id="presetSelect">
+                    <option value="rojo_oxido">🔴 Rojo óxido / Hematita tenue</option>
+                    <option value="rojo_degradado">🦬 Rojo degradado o lavado (fondo similar)</option>
+                    <option value="amarillo_tenue">🟡 Amarillo, ocre o calcita velada</option>
+                    <option value="negro_carbon">⚫ Carbón vegetal / Negro desvaído</option>
+                    <option value="superposicion_colores">🥪 Superposición de colores (varias capas)</option>
+                    <option value="grabados_relieve">🟤 Grabados e incisiones (microrelieve)</option>
+                    <option value="textura_erosionada">🌧 Textura erosionada / Contornos difusos</option>
+                    <option value="alto_contraste">☀️ Luz solar dura / Sombras profundas</option>
+                </select>
+
+                <div id="presetButtonGrid" class="preset-button-grid" role="group" aria-label="Presets de análisis rápido"></div>
+
+                <div class="control-group" style="margin-top: 8px;">
+                    <label class="setting-label" for="favSelectSimple">⭐ Mis presets guardados</label>
+                    <div class="fav-row">
+                        <select id="favSelectSimple">
+                            <option value="">-- Usar una configuración guardada --</option>
+                        </select>
+                        <button id="deleteFavBtnSimple" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-card pro-card" id="proCardProcessing">
+                <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">1. Configuración del procesamiento</label>
                 <div class="control-group">
-                    <label class="setting-label" for="exportFormatSelect">Modo de salida</label>
-                    <select id="exportFormatSelect" style="padding:8px; font-size:0.8rem;">
-                        <option value="processed">Imagen procesada completa</option>
-                        <option value="original">Imagen original de entrada</option>
-                        <option value="combined">Imagen procesada y original lado a lado</option>
+                    <label class="setting-label" for="filterSelect">Algoritmo de procesamiento seleccionado</label>
+                    <select id="filterSelect">
+                        <option value="yds">YDS - General / Amarillos (Espacio YXX)</option>
+                        <option value="ybr">YBR - Rojos (Espacio YXX)</option>
+                        <option value="ybk">YBK - Negros (Espacio YXX)</option>
+                        <option value="yre">YRE - Rojos muy degradados (Espacio YXX)</option>
+                        <option value="lab">LAB - General / Sombras (Espacio LXX)</option>
+                        <option value="lds">LDS - Amarillos (Espacio LXX)</option>
+                        <option value="lre">LRE - Rojos tenues (Espacio LXX)</option>
+                        <option value="crgb">CRGB - Matriz fija rápida para rojos</option>
+                        <option value="pca_rgb">PCA Stretch estándar (sRGB Lineal)</option>
+                        <option value="yuv_stretch">PCA Stretch YCbCr (BT.601)</option>
+                        <option value="dog">Filtro estructural: Difference of Gaussians (DoG 2D)</option>
+                        <option value="unsharp_mask">Realce de micro-textura: Unsharp Mask (GPU)</option>
                     </select>
                 </div>
+
+                <div class="control-group" id="roiControlGroup" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
+                    <label class="setting-label" style="color:var(--text-main);">🎯 Ajustar el cálculo de color a una zona</label>
+                    <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0 0 6px 0; line-height: 1.3;">
+                        Dibuja un recuadro solo sobre la pintura para que el cálculo de color se ajuste a esa zona.
+                    </p>
+                    <div class="grid-2">
+                        <button id="roiSelectModeBtn" type="button" aria-pressed="false" style="padding:10px; font-size:0.8rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">🖊️ Dibujar selección</button>
+                        <button id="roiClearBtn" type="button" style="padding:10px; font-size:0.8rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">🗑️ Quitar selección</button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
+                        <input type="checkbox" id="useRoiCheck" disabled style="width:16px; height:16px;">
+                        <label for="useRoiCheck" style="font-size:0.78rem; color:var(--text-main);">Usar la selección para calcular los colores</label>
+                    </div>
+                </div>
+
+                <div class="control-group" style="margin-top: 6px;">
+                    <label class="setting-label" id="labelIntensity">Intensidad del estiramiento PCA</label>
+                    <input type="range" id="intensitySlider" min="5" max="250" value="70">
+                    <p id="pcaHelpText" style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0 0 0; line-height: 1.3;">
+                        Controla cuánto se amplifican las diferencias cromáticas obtenidas mediante PCA.
+                    </p>
+                </div>
+
+                <div class="control-group" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
+                    <label class="setting-label">Visualización y niveles estéticos</label>
+                    <div class="levels-sliders">
+                        <div class="level-row">
+                            <span>Punto negro:</span>
+                            <input type="range" id="sliderBlack" min="0" max="255" value="0">
+                            <span id="valBlack">0</span>
+                        </div>
+                        <div class="level-row">
+                            <span>Gamma / Gris:</span>
+                            <input type="range" id="sliderGamma" min="10" max="300" value="100">
+                            <span id="valGamma">1.00</span>
+                        </div>
+                        <div class="level-row">
+                            <span>Punto blanco:</span>
+                            <input type="range" id="sliderWhite" min="0" max="255" value="255">
+                            <span id="valWhite">255</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-card" id="configLibraryCard">
+                <div class="pro-only">
+                    <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">2. Biblioteca de configuraciones</label>
+                    <div class="control-group" style="margin-bottom: 12px;">
+                        <div class="fav-row">
+                            <select id="favSelectPro">
+                                <option value="">-- Seleccionar guardado --</option>
+                            </select>
+                            <button id="deleteFavBtnPro" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
+                            <button id="saveFavBtn" style="padding:12px; background:#27272a; font-size:0.8rem; font-weight:600;">💾 Guardar actual</button>
+                        </div>
+                        <div class="grid-2" style="margin-top: 8px;">
+                            <button id="exportLibraryBtn" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">📤 Exportar biblioteca</button>
+                            <label for="importLibraryInput" style="background:#27272a; text-align:center; cursor:pointer; padding:10px; border-radius:8px; font-size:0.78rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center;">
+                                📥 Importar biblioteca
+                                <input type="file" id="importLibraryInput" accept=".json" class="hidden">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="simple-only">
+                    <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">Transferencia y documentación</label>
+                </div>
+
+                <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
+                    <label class="setting-label" style="color:var(--accent);">📋 Código de configuración rápida (ASW1)</label>
+                    <textarea id="shareCodeField" rows="2" placeholder="Pegue aquí un código (ASW1:...)" style="width:100%; box-sizing:border-box; background:#101012; color:var(--text-main); border:1px solid var(--border); padding:6px; border-radius:6px;"></textarea>
+                    <div class="grid-2" style="margin-top: 4px;">
+                        <button id="btnGenerateCode" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">Generar código</button>
+                        <button id="btnApplyCode" style="padding:10px; font-size:0.78rem; background:var(--accent); font-weight:600; color:#fff; border:none; border-radius:8px; cursor:pointer;">Aplicar código</button>
+                    </div>
+                    <button id="btnCopyCode" style="margin-top:4px; padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer; width:100%;">📋 Copiar código</button>
+                </div>
+
+                <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
+                    <label class="setting-label" style="color:var(--success);">📂 Cargar parámetros (.JSON)</label>
+                    <label for="importJsonInput" style="background:#1e1e20; text-align:center; cursor:pointer; padding:12px; border-radius:8px; font-size:0.82rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
+                        📥 SELECCIONAR ARCHIVO CONFIG.JSON
+                        <input type="file" id="importJsonInput" accept=".json" class="hidden">
+                    </label>
+                </div>
+            </div>
+
+            <div class="controls-card pro-card" id="histogramUI" style="padding: 14px; margin: 0; border: 1px solid var(--border);">
+                <label class="setting-label" style="color:var(--text-main); margin-bottom:2px;">3. Análisis estadístico</label>
+                <canvas id="histogramCanvas"></canvas>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-family: monospace; font-size: 0.72rem; color: var(--text-muted); padding-top: 4px;">
+                    <div>Media: <span id="lblMean" style="color: var(--text-main); font-weight: 600;">-</span></div>
+                    <div>Desv. estándar: <span id="lblStd" style="color: var(--text-main); font-weight: 600;">-</span></div>
+                    <div>Valor mínimo: <span id="lblMin" style="color: var(--text-main); font-weight: 600;">-</span></div>
+                    <div>Valor máximo: <span id="lblMax" style="color: var(--text-main); font-weight: 600;">-</span></div>
+                </div>
+            </div>
+
+            <div id="exportZone" class="controls-card" style="padding: 14px; margin: 0; border: 1px solid var(--border); background: var(--bg-card); display: flex; flex-direction: column; gap: 8px;">
+                <div class="pro-only"><label class="setting-label" style="color:var(--text-main);">4. Exportación</label></div>
+                <div class="simple-only"><label class="setting-label" style="color:var(--text-main);">Exportación final de datos</label></div>
+                
                 <div class="control-group">
-                    <label class="setting-label" for="formatSelect">Formato de exportación</label>
-                    <select id="formatSelect" style="padding:8px; font-size:0.8rem;">
-                        <option value="image/png">Formato PNG (Sin pérdidas)</option>
-                        <option value="image/jpeg">Formato JPEG HD (98%)</option>
-                    </select>
+                    <label class="setting-label" for="exportProjectName">Nombre del proyecto / exportación</label>
+                    <input type="text" id="exportProjectName" placeholder="Ej. Abrigo_Cueva_Pintura1">
+                </div>
+
+                <div id="advancedExportSelectors" class="grid-2">
+                    <div class="control-group">
+                        <label class="setting-label" for="exportFormatSelect">Modo de salida</label>
+                        <select id="exportFormatSelect" style="padding:8px; font-size:0.8rem;">
+                            <option value="processed">Imagen procesada completa</option>
+                            <option value="original">Imagen original de entrada</option>
+                            <option value="combined">Imagen procesada y original lado a lado</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="setting-label" for="formatSelect">Formato de exportación</label>
+                        <select id="formatSelect" style="padding:8px; font-size:0.8rem;">
+                            <option value="image/png">Formato PNG (Sin pérdidas)</option>
+                            <option value="image/jpeg">Formato JPEG HD (98%)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="checkbox" id="exportImgCheck" checked style="width:16px; height:16px;">
+                        <label for="exportImgCheck" style="font-size:0.78rem; color:var(--text-main);">Exportar archivo gráfico (.png / .jpg)</label>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <!-- Casilla de exportar JSON desactivada por defecto -->
+                        <input type="checkbox" id="exportJsonCheck" style="width:16px; height:16px;">
+                        <label for="exportJsonCheck" style="font-size:0.78rem; color:var(--text-main);">Exportar parámetros (.json)</label>
+                    </div>
+                </div>
+                
+                <div style="display:flex; align-items:center; gap:8px; margin: 2px 0; border-top: 1px dashed var(--border); padding-top: 8px;">
+                    <input type="checkbox" id="geoAuthCheck" style="width:18px; height:18px;">
+                    <label for="geoAuthCheck" style="font-size:0.75rem; color:var(--text-muted);">Incrustar metadatos georreferenciales (GPS)</label>
+                </div>
+                <div id="metadataDisplay" class="metadata-box hidden" aria-live="polite">Esperando coordenadas...</div>
+                <button id="btnCopyGPS" class="hidden" style="padding:8px; font-size:0.72rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:6px; cursor:pointer;">📋 Copiar coordenadas</button>
+
+                <div style="margin-top:4px; border-top:1px solid var(--border); padding-top:10px;">
+                    <button id="saveBtn" class="btn-success" style="font-size:0.82rem; padding:10px; width:100%;">💾 EXPORTAR ARCHIVOS</button>
                 </div>
             </div>
 
-            <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;">
-                <label class="setting-label">Parámetros de salida del archivo</label>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" id="exportImgCheck" checked style="width:16px; height:16px;">
-                    <label for="exportImgCheck" style="font-size:0.78rem; color:var(--text-main);">Exportar archivo gráfico (.png / .jpg)</label>
-                </div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <input type="checkbox" id="exportJsonCheck" checked style="width:16px; height:16px;">
-                    <label for="exportJsonCheck" style="font-size:0.78rem; color:var(--text-main);">Exportar parámetros del procesamiento (.json)</label>
-                </div>
+            <div class="controls-card" style="border-left: 3px solid var(--success);">
+                <label class="setting-label" style="color:var(--text-main); margin-bottom: 4px;">🙏 Agradecimientos y créditos</label>
+                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.4;">
+                    Los fundamentos metodológicos y los espacios de color están basados en las investigaciones de Jon Harman desarrolladas en DStretch®:
+                </p>
+                <ul class="ack-list">
+                    <li><strong>Jon Harman, Ph.D.:</strong> Por ser el creador del algoritmo adaptado al arte rupestre.</li>
+                </ul>
             </div>
-            
-            <div style="display:flex; align-items:center; gap:8px; margin: 2px 0; border-top: 1px dashed var(--border); padding-top: 8px;">
-                <input type="checkbox" id="geoAuthCheck" style="width:18px; height:18px;">
-                <label for="geoAuthCheck" style="font-size:0.75rem; color:var(--text-muted);">Incrustar metadatos georreferenciales (GPS)</label>
+
+            <div class="telemetry-panel">
+                <div class="telemetry-row"><span>Estado de operación:</span><span id="telStatus" style="color:#22c55e;" aria-live="polite">Inicializando subsistemas...</span></div>
+                <div class="telemetry-row"><span>Resolución nativa:</span><span id="telResolution">-</span></div>
+                <div class="telemetry-row"><span>Tamaño en memoria:</span><span id="telSize">-</span></div>
             </div>
-            <div id="metadataDisplay" class="metadata-box hidden" aria-live="polite">Esperando coordenadas...</div>
-            <button id="btnCopyGPS" class="hidden" style="padding:8px; font-size:0.72rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:6px; cursor:pointer;">📋 Copiar coordenadas</button>
-
-            <div class="grid-2" style="margin-top:4px; border-top:1px solid var(--border); padding-top:10px;">
-                <button id="cleanScreenBtn" style="background:#3f3f46; font-weight:600; font-size:0.82rem; padding:10px; color:#fff; border:none; border-radius:8px; cursor:pointer;">📱 PANTALLA LIMPIA</button>
-                <button id="saveBtn" class="btn-success" style="font-size:0.82rem; padding:10px;">💾 EXPORTAR ARCHIVOS</button>
-            </div>
-        </div>
-
-        <div class="controls-card" style="border-left: 3px solid var(--success);">
-            <label class="setting-label" style="color:var(--text-main); margin-bottom: 4px;">🙏 Agradecimientos y créditos</label>
-            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.4;">
-                Los fundamentos metodológicos y los espacios de color de esta aplicación están basados en las investigaciones de Jon Harman desarrolladas en el programa DStretch®:
-            </p>
-            <ul class="ack-list">
-                <li><strong>Jon Harman, Ph.D.:</strong> Por ser el creador del algoritmo adaptado al arte rupestre e idear las matrices de descorrelación y espacios de color (CRGB, YDS, YBR, YBK, LDS, LRE).</li>
-            </ul>
-        </div>
-
-        <div class="telemetry-panel">
-            <div class="telemetry-row"><span>Estado de operación:</span><span id="telStatus" style="color:#22c55e;" aria-live="polite">Inicializando subsistemas...</span></div>
-            <div class="telemetry-row"><span>Resolución nativa:</span><span id="telResolution">-</span></div>
-            <div class="telemetry-row"><span>Tamaño en memoria:</span><span id="telSize">-</span></div>
         </div>
     </div>
 
+    <!-- Barra de Pantalla Limpia Móvil -->
     <div class="clean-bar" id="cleanBar">
-        <button id="cleanHoldViewBtn" style="padding:10px; font-size:0.8rem; background:#27272a; flex-grow:1; font-weight:700;">👁️ MANTENER ORIGINAL</button>
-        <button id="cleanExportBtn" style="padding:10px; font-size:0.8rem; background:var(--success); font-weight:700;">💾 EXPORTAR</button>
-        <button id="restoreScreenBtn" style="padding:10px; font-size:0.8rem; background:#ef4444; font-weight:700;">❌ SALIR</button>
+        <div class="clean-presets-scroll" id="cleanPresetsScroll"></div>
+        <div class="clean-actions-row">
+            <button id="cleanHoldViewBtn" style="background:#27272a; color:#fff; border:1px solid var(--border);">👁️ ORIGINAL</button>
+            <label for="uploadInputClean" style="background:#1e1e20; color:#fff; border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center;">📂 CARGAR
+                <input type="file" id="uploadInputClean" accept="image/*" class="hidden">
+            </label>
+            <button id="cleanExportBtn" class="btn-success">💾 EXPORTAR</button>
+            <button id="restoreScreenBtn" class="btn-danger">⚙️ MÁS AJUSTES</button>
+        </div>
     </div>
 
     <script>
@@ -800,7 +1047,7 @@
                     gl_Position = vec4(position, 0.0, 1.0);
                 }`,
 
-			fragmentShaderSource: `#version 300 es
+            fragmentShaderSource: `#version 300 es
                 precision highp float;
                 in vec2 vTexCoord; out vec4 fragColor;
                 uniform sampler2D uTexture; uniform vec2 uResolution;
@@ -845,7 +1092,7 @@
 
             init(canvasElement) {
                 this.gl = canvasElement.getContext('webgl2', { alpha: false, antialias: false, powerPreference: "high-performance" });
-                if (!this.gl) throw new Error("WebGL2 no disponible en este dispositivo.");
+                if (!this.gl) throw new Error("WebGL2 no disponible.");
                 
                 const gl = this.gl;
                 const vs = this.compileShader(gl.VERTEX_SHADER, this.vertexShaderSource);
@@ -855,10 +1102,6 @@
                 gl.attachShader(this.program, vs); 
                 gl.attachShader(this.program, fs);
                 gl.linkProgram(this.program);
-                
-                if (!gl.getProgramParameter(this.program, gl.LINK_STATUS)) {
-                    throw new Error(`Fallo en linkado WebGL Program: ${gl.getProgramInfoLog(this.program)}`);
-                }
 
                 const uniformKeys = ["uResolution", "uFilterMode", "uLevels", "uFilterAmount"];
                 uniformKeys.forEach(key => {
@@ -885,11 +1128,6 @@
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source); 
                 gl.compileShader(shader);
-                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                    const info = gl.getShaderInfoLog(shader);
-                    gl.deleteShader(shader);
-                    throw new Error(`Fallo compilación Shader: ${info}`);
-                }
                 return shader;
             },
 
@@ -918,6 +1156,112 @@
             }
         };
 
+        const ResizerController = {
+            init() {
+                this.initHorizontalSplitter();
+                this.initVerticalSplitter();
+            },
+
+            initHorizontalSplitter() {
+                const resizer = document.getElementById('resizer');
+                const container = document.getElementById('mainContainer');
+                if (!resizer || !container) return;
+
+                let isDragging = false;
+
+                const startDrag = () => {
+                    if (window.innerWidth < 1100) return;
+                    isDragging = true;
+                    resizer.classList.add('dragging');
+                    document.body.style.cursor = 'col-resize';
+                    document.body.style.userSelect = 'none';
+                };
+
+                const doDrag = (e) => {
+                    if (!isDragging) return;
+                    const containerRect = container.getBoundingClientRect();
+                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    if (!clientX) return;
+
+                    let newLeftWidth = clientX - containerRect.left;
+                    let percentage = (newLeftWidth / containerRect.width) * 100;
+
+                    percentage = Math.max(25, Math.min(75, percentage));
+                    document.documentElement.style.setProperty('--left-width', `${percentage}%`);
+                };
+
+                const stopDrag = () => {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    resizer.classList.remove('dragging');
+                    document.body.style.cursor = '';
+                    document.body.style.userSelect = '';
+                    if (UIController && UIController.requestWebGLRender) {
+                        UIController.requestWebGLRender();
+                    }
+                };
+
+                resizer.addEventListener('mousedown', startDrag);
+                window.addEventListener('mousemove', doDrag);
+                window.addEventListener('mouseup', stopDrag);
+                resizer.addEventListener('touchstart', startDrag, { passive: true });
+                window.addEventListener('touchmove', doDrag, { passive: true });
+                window.addEventListener('touchend', stopDrag);
+            },
+
+            initVerticalSplitter() {
+                const resizerV = document.getElementById('resizerV');
+                const viewerCard = document.getElementById('viewerCard');
+                if (!resizerV || !viewerCard) return;
+
+                let isDragging = false;
+                let startY = 0;
+                let startHeight = 0;
+
+                const startDrag = (e) => {
+                    if (window.innerWidth >= 1100) return;
+                    isDragging = true;
+                    resizerV.classList.add('dragging');
+                    startY = e.clientY || (e.touches && e.touches[0].clientY);
+                    startHeight = viewerCard.getBoundingClientRect().height;
+                    document.body.style.userSelect = 'none';
+                };
+
+                const doDrag = (e) => {
+                    if (!isDragging) return;
+                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                    if (!clientY) return;
+
+                    const deltaY = clientY - startY;
+                    let newHeight = startHeight + deltaY;
+
+                    const maxHeight = window.innerHeight * 0.75;
+                    newHeight = Math.max(120, Math.min(maxHeight, newHeight));
+
+                    viewerCard.style.height = `${newHeight}px`;
+                    viewerCard.style.maxHeight = `${newHeight}px`;
+                    viewerCard.style.aspectRatio = 'auto';
+                };
+
+                const stopDrag = () => {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    resizerV.classList.remove('dragging');
+                    document.body.style.userSelect = '';
+                    if (UIController && UIController.requestWebGLRender) {
+                        UIController.requestWebGLRender();
+                    }
+                };
+
+                resizerV.addEventListener('mousedown', startDrag);
+                window.addEventListener('mousemove', doDrag);
+                window.addEventListener('mouseup', stopDrag);
+                resizerV.addEventListener('touchstart', startDrag, { passive: true });
+                window.addEventListener('touchmove', doDrag, { passive: true });
+                window.addEventListener('touchend', stopDrag);
+            }
+        };
+
         const CameraController = {
             stream: null,
             async init() {
@@ -925,7 +1269,7 @@
                     this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } });
                     document.getElementById('videoPreview').srcObject = this.stream;
                 } catch (err) { 
-                    UIController.updateStatus("Sensor de cámara inaccesible o ausente. Use carga de archivos.", "#a1a1aa"); 
+                    UIController.updateStatus("Sensor de cámara inaccesible.", "#a1a1aa"); 
                 }
             }
         };
@@ -948,7 +1292,6 @@
                     let luma = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
                     let rLuma = Math.min(255, Math.max(0, Math.round(luma)));
                     hist[rLuma]++;
-                    
                     if (luma < minLuma) minLuma = luma;
                     if (luma > maxLuma) maxLuma = luma;
                     sumLuma += luma;
@@ -988,7 +1331,7 @@
                 }
             },
             saveActive() {
-                const name = prompt("Asigna un nombre a esta configuración técnica:");
+                const name = prompt("Asigna un nombre a esta configuración:");
                 if (!name) return;
                 this.favorites[name] = {
                     filter: document.getElementById('filterSelect').value,
@@ -1003,58 +1346,38 @@
             deleteSelected(selectId) {
                 const selectEl = document.getElementById(selectId);
                 const name = selectEl.value;
-                if (!name) {
-                    UIController.updateStatus("Selecciona un favorito para poder borrarlo.", "#eab308");
-                    return;
-                }
-                if (confirm(`¿Seguro que deseas eliminar el preset "${name}"?`)) {
+                if (!name) return;
+                if (confirm(`¿Eliminar preset "${name}"?`)) {
                     delete this.favorites[name];
                     localStorage.setItem('arqueostretch_favs', JSON.stringify(this.favorites));
                     this.updateDropdowns();
-                    UIController.updateStatus(`Preset "${name}" eliminado correctamente.`, "#22c55e");
                 }
             },
             exportLibrary() {
                 const names = Object.keys(this.favorites);
-                if (names.length === 0) {
-                    UIController.updateStatus("No hay presets guardados que exportar.", "#eab308");
-                    return;
-                }
-                const payload = {
-                    "software": "ArqueoStretch",
-                    "version": APP_VERSION,
-                    "type": "favorites_library",
-                    "favorites": this.favorites
-                };
+                if (names.length === 0) return;
+                const payload = { "software": "ArqueoStretch", "version": APP_VERSION, "favorites": this.favorites };
                 const blob = new Blob([JSON.stringify(payload, null, 4)], { type: "application/json" });
                 const link = document.createElement('a');
-                link.download = "arqueostretch_biblioteca_presets.json";
+                link.download = "arqueostretch_biblioteca.json";
                 link.href = URL.createObjectURL(blob);
                 link.click();
-                URL.revokeObjectURL(link.href);
-                UIController.updateStatus(`Biblioteca exportada (${names.length} presets).`, "#22c55e");
             },
             async importLibrary(file) {
                 if (!file) return;
                 try {
                     const text = await file.text();
                     const data = JSON.parse(text);
-                    const incoming = (data && data.type === "favorites_library" && data.favorites) ? data.favorites : data;
-                    if (!incoming || typeof incoming !== 'object') throw new Error("El archivo no contiene una biblioteca válida.");
-                    const incomingNames = Object.keys(incoming);
-                    if (incomingNames.length === 0) throw new Error("El archivo no contiene presets.");
+                    const incoming = data.favorites || data;
                     this.favorites = { ...this.favorites, ...incoming };
                     localStorage.setItem('arqueostretch_favs', JSON.stringify(this.favorites));
                     this.updateDropdowns();
-                    UIController.updateStatus(`Biblioteca importada (${incomingNames.length} presets añadidos).`, "#22c55e");
-                } catch (err) {
-                    UIController.updateStatus("No se pudo importar la biblioteca: " + err.message, "#ef4444");
-                }
+                } catch (err) { alert("Error importando biblioteca."); }
             },
             updateDropdowns() {
                 const selectSimple = document.getElementById('favSelectSimple');
                 const selectPro = document.getElementById('favSelectPro');
-                const template = '<option value="">-- Usar una configuración guardada --</option>';
+                const template = '<option value="">-- Usar configuración guardada --</option>';
                 selectSimple.innerHTML = template;
                 if (selectPro) selectPro.innerHTML = template;
 
@@ -1073,31 +1396,21 @@
             loadConfig(name) {
                 const config = this.favorites[name];
                 if (!config) return;
-
                 document.getElementById('filterSelect').value = config.filter;
                 UIController.currentAlgMode = config.filter;
                 document.getElementById('intensitySlider').value = config.intensity;
                 document.getElementById('sliderBlack').value = config.black;
                 document.getElementById('sliderGamma').value = config.gamma;
                 document.getElementById('sliderWhite').value = config.white;
-                
-                document.getElementById('favSelectSimple').value = name;
-                const selectPro = document.getElementById('favSelectPro');
-                if (selectPro) selectPro.value = name;
-
                 UIController.updateLevelLabels();
                 UIController.dispatchProcessing();
             }
         };
 
         const ZoomController = {
-            scale: 1,
-            translateX: 0,
-            translateY: 0,
-            minScale: 1,
-            maxScale: 8,
-            isPanning: false,
+            scale: 1, translateX: 0, translateY: 0, minScale: 1, maxScale: 8, isPanning: false,
             startPoint: { x: 0, y: 0 },
+            initialPinchDist: 0, initialScale: 1, isPinching: false,
 
             init() {
                 this.card = document.getElementById('viewerCard');
@@ -1119,9 +1432,16 @@
                 window.addEventListener('mouseup', () => this.onEnd());
 
                 this.card.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 1) {
-                        // Solo se bloquea el scroll de la página si de verdad vamos a hacer pan
-                        // (imagen ampliada y no estamos dibujando una selección de zona).
+                    if (e.touches.length === 2) {
+                        e.preventDefault();
+                        this.isPinching = true;
+                        this.isPanning = false;
+                        this.initialPinchDist = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
+                        this.initialScale = this.scale;
+                    } else if (e.touches.length === 1) {
                         if (this.scale > 1 && !(typeof RoiSelector !== 'undefined' && RoiSelector.drawMode)) {
                             e.preventDefault();
                         }
@@ -1130,75 +1450,84 @@
                 }, { passive: false });
 
                 this.card.addEventListener('touchmove', (e) => {
-                    if (this.isPanning && e.touches.length === 1) {
-                        e.preventDefault(); // evita que la página se desplace mientras se arrastra la imagen
+                    if (this.isPinching && e.touches.length === 2) {
+                        e.preventDefault();
+                        const currentDist = Math.hypot(
+                            e.touches[0].clientX - e.touches[1].clientX,
+                            e.touches[0].clientY - e.touches[1].clientY
+                        );
+                        if (this.initialPinchDist > 0) {
+                            const factor = currentDist / this.initialPinchDist;
+                            const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                            const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                            this.zoomAtPointWithBaseScale(this.initialScale * factor, centerX, centerY);
+                        }
+                    } else if (this.isPanning && e.touches.length === 1) {
+                        e.preventDefault();
                         this.onMove(e.touches[0].clientX, e.touches[0].clientY);
                     }
                 }, { passive: false });
 
-                this.card.addEventListener('touchend', () => this.onEnd());
+                this.card.addEventListener('touchend', (e) => {
+                    if (e.touches.length < 2) this.isPinching = false;
+                    if (e.touches.length === 0) this.onEnd();
+                });
             },
 
             onStart(clientX, clientY) {
                 if (RoiSelector && RoiSelector.drawMode) return;
                 if (this.scale <= 1) return;
-
                 this.isPanning = true;
                 this.startPoint = { x: clientY - this.translateY, xX: clientX - this.translateX };
-                this.card.style.cursor = 'grabbing';
             },
 
             onMove(clientX, clientY) {
                 if (!this.isPanning) return;
                 this.translateX = clientX - this.startPoint.xX;
                 this.translateY = clientY - this.startPoint.x;
+                this.clampTranslate();
                 this.applyTransform();
             },
 
-            onEnd() {
-                this.isPanning = false;
-                if (this.card) this.card.style.cursor = '';
-            },
+            onEnd() { this.isPanning = false; },
 
             zoomAtCenter(factor) {
                 const rect = this.card.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-                this.zoomAtPoint(factor, centerX, centerY);
+                this.zoomAtPoint(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
             },
 
             zoomAtPoint(factor, clientX, clientY) {
-                // Si se está dibujando una selección de zona, el zoom queda bloqueado: cambiar de
-                // escala en mitad del dibujo desincronizaría las coordenadas de la selección con
-                // los píxeles reales de la imagen.
                 if (typeof RoiSelector !== 'undefined' && RoiSelector.drawMode) return;
+                const targetScale = this.scale * factor;
+                this.zoomAtPointWithBaseScale(targetScale, clientX, clientY);
+            },
 
+            zoomAtPointWithBaseScale(targetScale, clientX, clientY) {
                 const rect = this.card.getBoundingClientRect();
                 const mouseX = clientX - rect.left;
                 const mouseY = clientY - rect.top;
-
                 const oldScale = this.scale;
-                let newScale = oldScale * factor;
-                newScale = Math.max(this.minScale, Math.min(this.maxScale, newScale));
+                let newScale = Math.max(this.minScale, Math.min(this.maxScale, targetScale));
 
                 if (newScale === oldScale) return;
-
                 this.translateX = mouseX - (mouseX - this.translateX) * (newScale / oldScale);
                 this.translateY = mouseY - (mouseY - this.translateY) * (newScale / oldScale);
                 this.scale = newScale;
-
-                if (this.scale === 1) {
-                    this.translateX = 0;
-                    this.translateY = 0;
-                }
-
+                if (this.scale === 1) { this.translateX = 0; this.translateY = 0; }
+                this.clampTranslate();
                 this.applyTransform();
             },
 
+            clampTranslate() {
+                const rect = this.card.getBoundingClientRect();
+                const minX = rect.width * (1 - this.scale);
+                const minY = rect.height * (1 - this.scale);
+                this.translateX = Math.min(0, Math.max(minX, this.translateX));
+                this.translateY = Math.min(0, Math.max(minY, this.translateY));
+            },
+
             reset() {
-                this.scale = 1;
-                this.translateX = 0;
-                this.translateY = 0;
+                this.scale = 1; this.translateX = 0; this.translateY = 0;
                 this.applyTransform();
             },
 
@@ -1209,11 +1538,7 @@
         };
 
         const RoiSelector = {
-            drawMode: false,
-            dragging: false,
-            startContainerPoint: null,
-            roi: null,
-
+            drawMode: false, dragging: false, startContainerPoint: null, roi: null,
             init() {
                 this.card = document.getElementById('viewerCard');
                 this.overlay = document.getElementById('roiOverlay');
@@ -1238,11 +1563,6 @@
                 this.drawMode = !this.drawMode;
                 this.modeBtn.setAttribute('aria-pressed', String(this.drawMode));
                 this.modeBtn.style.background = this.drawMode ? 'var(--accent)' : '#27272a';
-                this.card.style.cursor = this.drawMode ? 'crosshair' : '';
-                UIController.updateStatus(
-                    this.drawMode ? "Dibuja un recuadro sobre la pintura en la imagen." : "Modo de selección desactivado.",
-                    "#2563eb"
-                );
             },
 
             clear() {
@@ -1250,7 +1570,6 @@
                 this.overlay.classList.add('hidden');
                 this.useCheck.checked = false;
                 this.useCheck.disabled = true;
-                UIController.updateStatus("Selección eliminada. Se usará toda la imagen para calcular los colores.", "#eab308");
                 UIController.dispatchProcessing();
             },
 
@@ -1318,21 +1637,12 @@
                 const p = this.containerPoint(evt);
                 const rect = p.rect;
 
-                const x0screen = Math.min(this.startContainerPoint.x, p.x);
-                const y0screen = Math.min(this.startContainerPoint.y, p.y);
-                const x1screen = Math.max(this.startContainerPoint.x, p.x);
-                const y1screen = Math.max(this.startContainerPoint.y, p.y);
-
-                const c0 = this.toImageCoords(x0screen, y0screen, rect);
-                const c1 = this.toImageCoords(x1screen, y1screen, rect);
+                const c0 = this.toImageCoords(Math.min(this.startContainerPoint.x, p.x), Math.min(this.startContainerPoint.y, p.y), rect);
+                const c1 = this.toImageCoords(Math.max(this.startContainerPoint.x, p.x), Math.max(this.startContainerPoint.y, p.y), rect);
                 if (!c0 || !c1) { this.overlay.classList.add('hidden'); return; }
 
                 const roiW = c1.x - c0.x, roiH = c1.y - c0.y;
-                if (roiW < 15 || roiH < 15) {
-                    this.overlay.classList.add('hidden');
-                    UIController.updateStatus("La selección es demasiado pequeña, inténtalo de nuevo.", "#eab308");
-                    return;
-                }
+                if (roiW < 15 || roiH < 15) { this.overlay.classList.add('hidden'); return; }
 
                 this.roi = { x: Math.round(c0.x), y: Math.round(c0.y), w: Math.round(roiW), h: Math.round(roiH) };
                 this.useCheck.disabled = false;
@@ -1340,8 +1650,6 @@
                 this.drawMode = false;
                 this.modeBtn.setAttribute('aria-pressed', 'false');
                 this.modeBtn.style.background = '#27272a';
-                this.card.style.cursor = '';
-                UIController.updateStatus("Selección lista. Los colores se calcularán a partir de esa zona.", "#22c55e");
                 UIController.dispatchProcessing();
             }
         };
@@ -1352,16 +1660,13 @@
                 if (!navigator.geolocation) return;
                 navigator.geolocation.getCurrentPosition((position) => {
                     this.telemetry = { lat: position.coords.latitude, lon: position.coords.longitude };
-                    document.getElementById('metadataDisplay').innerText = `FOTOCAMPAÑA: ${new Date().toISOString()} | GPS: LAT ${this.telemetry.lat.toFixed(5)}, LON ${this.telemetry.lon.toFixed(5)}`;
-                }, () => {
-                    UIController.updateStatus("Acceso de georreferenciación no disponible.", "#ef4444");
+                    document.getElementById('metadataDisplay').innerText = `GPS: LAT ${this.telemetry.lat.toFixed(5)}, LON ${this.telemetry.lon.toFixed(5)}`;
                 });
             }
         };
 
         const ProcessingController = {
-            worker: null,
-            imageVersion: 0,
+            worker: null, imageVersion: 0,
             init() {
                 if (this.worker) this.worker.terminate();
                 this.worker = new Worker('worker.js');
@@ -1372,13 +1677,12 @@
 
                 if (filterValue === 'dog' || filterValue === 'unsharp_mask') {
                     UIController.currentProcessedData = originalData;
-                    UIController.updateStatus("Filtrado espacial activo en GPU.", "#22c55e");
                     UIController.requestWebGLRender(); 
                     if (UIController.isLabMode) HistogramController.draw(UIController.currentProcessedData); 
                     return;
                 }
 
-                UIController.updateStatus("Computando matriz de descorrelación...", "#2563eb");
+                UIController.updateStatus("Computando matriz...", "#2563eb");
                 const bufferCopy = new Uint8ClampedArray(originalData.data.length);
                 bufferCopy.set(originalData.data);
                 
@@ -1390,7 +1694,6 @@
             },
             handleResponse(e) {
                 if (e.data.version !== this.imageVersion) return; 
-
                 const w = UIController.currentOriginalData.width; 
                 const h = UIController.currentOriginalData.height;
                 
@@ -1409,7 +1712,7 @@
                 if (!baseName) {
                     const now = new Date();
                     const pad = num => String(num).padStart(2, '0');
-                    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+                    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
                     const activeAlg = (UIController.isLabMode ? document.getElementById('filterSelect').value : UIController.currentAlgMode).toUpperCase();
                     baseName = `${dateStr}_${activeAlg}`;
                 }
@@ -1418,7 +1721,7 @@
 
             exportDocument() {
                 if (!UIController.currentOriginalData || !UIController.currentProcessedData) {
-                    UIController.updateStatus("Matriz de datos vacía.", "#ef4444"); return;
+                    UIController.updateStatus("Sin datos cargados.", "#ef4444"); return;
                 }
                 const exportMode = document.getElementById('exportFormatSelect').value;
                 const mimeType = document.getElementById('formatSelect').value;
@@ -1442,21 +1745,16 @@
                 }
 
                 if (document.getElementById('exportImgCheck').checked) {
-                    const fileNameStr = this.getFileName(extension);
-                    try {
-                        const dataUrl = outCanvas.toDataURL(mimeType, quality);
-                        const link = document.createElement('a');
-                        link.download = fileNameStr;
-                        link.href = dataUrl; link.click();
-                        UIController.updateStatus("Exportación completada.", "#22c55e");
-                    } catch (err) { UIController.updateStatus(err.message, "#ef4444"); return; }
+                    const link = document.createElement('a');
+                    link.download = this.getFileName(extension);
+                    link.href = outCanvas.toDataURL(mimeType, quality); 
+                    link.click();
                 }
 
                 if (document.getElementById('exportJsonCheck').checked) {
                     const activeAlg = UIController.isLabMode ? document.getElementById('filterSelect').value : UIController.currentAlgMode;
                     const jsonMetadata = {
-                        "software": "ArqueoStretch",
-                        "version": APP_VERSION,
+                        "software": "ArqueoStretch", "version": APP_VERSION,
                         "processing": {
                             "algorithm": activeAlg,
                             "targetStd": parseFloat(document.getElementById('intensitySlider').value),
@@ -1469,24 +1767,11 @@
                         "date": new Date().toISOString()
                     };
 
-                    const activeRoi = RoiSelector.getActiveRoi();
-                    if (activeRoi) {
-                        jsonMetadata.processing.regionOfInterest = activeRoi;
-                    }
-
-                    if (document.getElementById('geoAuthCheck').checked && GPSManager.telemetry) {
-                        jsonMetadata.geolocation = {
-                            "latitude": GPSManager.telemetry.lat,
-                            "longitude": GPSManager.telemetry.lon
-                        };
-                    }
-
                     const jsonBlob = new Blob([JSON.stringify(jsonMetadata, null, 4)], { type: "application/json" });
                     const jsonLink = document.createElement('a');
                     jsonLink.download = this.getFileName('json');
                     jsonLink.href = URL.createObjectURL(jsonBlob);
                     jsonLink.click();
-                    URL.revokeObjectURL(jsonLink.href);
                 }
             }
         };
@@ -1501,29 +1786,48 @@
 
             presets: {
                 rojo_oxido:           { filter: 'yre', intensity: 15, black: 0, gamma: 100, white: 255 },
-				rojo_degradado:       { filter: 'ybr', intensity: 15, black: 0, gamma: 100, white: 255 },
-				amarillo_tenue:       { filter: 'yds', intensity: 15, black: 0, gamma: 100, white: 255 },
-				negro_carbon:         { filter: 'ybk', intensity: 15, black: 0, gamma: 100, white: 255 },
-				superposicion_colores:{ filter: 'lab', intensity: 15, black: 0, gamma: 100, white: 255 },
-				grabados_relieve:     { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
-				textura_erosionada:   { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
-				alto_contraste:       { filter: 'crgb', intensity: 15, black: 10, gamma: 95, white: 245 }
+                rojo_degradado:       { filter: 'ybr', intensity: 15, black: 0, gamma: 100, white: 255 },
+                amarillo_tenue:       { filter: 'yds', intensity: 15, black: 0, gamma: 100, white: 255 },
+                negro_carbon:         { filter: 'ybk', intensity: 15, black: 0, gamma: 100, white: 255 },
+                superposicion_colores:{ filter: 'lab', intensity: 15, black: 0, gamma: 100, white: 255 },
+                grabados_relieve:     { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
+                textura_erosionada:   { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
+                alto_contraste:       { filter: 'crgb', intensity: 15, black: 10, gamma: 95, white: 245 }
             },
+
+            cleanPresetsList: [
+                { id: 'rojo_oxido', label: '🔴 Rojo' },
+                { id: 'rojo_degradado', label: '🦬 Rojo deg.' },
+                { id: 'amarillo_tenue', label: '🟡 Amarillo' },
+                { id: 'negro_carbon', label: '⚫ Carbón' },
+                { id: 'superposicion_colores', label: '🥪 Capas' },
+                { id: 'grabados_relieve', label: '🟤 Grabados' },
+                { id: 'textura_erosionada', label: '🌧 Erosionado' },
+                { id: 'alto_contraste', label: '☀️ Contraste' }
+            ],
 
             init() {
                 try { WebGL2Pipeline.init(document.getElementById('canvasView')); } catch (err) { this.updateStatus(err.message, "#ef4444"); return; }
                 ProcessingController.init();
                 FavoritesManager.load();
+                this.renderPresetButtonGrid();
+                this.renderCleanPresetChips();
                 ZoomController.init();
+                ResizerController.init();
                 this.setupEventListeners();
                 CameraController.init();
                 RoiSelector.init();
                 this.switchUIMode(false);
                 this.offscreenCanvas = document.createElement('canvas');
+
+                if (window.innerWidth <= 600) {
+                    document.body.classList.add('clean-screen');
+                }
             },
 
             switchUIMode(toLab) {
                 this.isLabMode = toLab;
+                document.body.classList.toggle('pro-mode-active', toLab);
                 const manualBtn = document.getElementById('toggleManualBtn');
                 const manualPanel = document.getElementById('manualPanel');
 
@@ -1531,20 +1835,15 @@
                     document.getElementById('tabProfesional').classList.add('active');
                     document.getElementById('tabSimple').classList.remove('active');
                     document.getElementById('wrapperSimple').classList.add('hidden');
-                    
                     manualBtn.classList.remove('hidden');
-                    
                     document.getElementById('filterSelect').value = this.currentAlgMode;
                     if (this.currentProcessedData) HistogramController.draw(this.currentProcessedData);
                 } else {
                     document.getElementById('tabSimple').classList.add('active');
                     document.getElementById('tabProfesional').classList.remove('active');
                     document.getElementById('wrapperSimple').classList.remove('hidden');
-                    
                     manualBtn.classList.add('hidden');
                     manualPanel.classList.add('hidden');
-                    
-                    document.getElementById('exportFormatSelect').value = 'processed';
                     this.applyPresetValues();
                 }
                 this.updateInterfaceLabels();
@@ -1553,8 +1852,9 @@
             updateInterfaceLabels() {
                 const filterValue = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
                 const labelIntensity = document.getElementById('labelIntensity');
-                
-                if (filterValue === 'pca_rgb' || filterValue === 'yuv_stretch') {
+                const isColorSpaceAlgorithm = (filterValue !== 'dog' && filterValue !== 'unsharp_mask');
+
+                if (isColorSpaceAlgorithm) {
                     labelIntensity.innerText = "Intensidad del estiramiento PCA";
                     document.getElementById('pcaHelpText').classList.remove('hidden');
                     document.getElementById('roiControlGroup').classList.remove('hidden');
@@ -1565,152 +1865,94 @@
                 }
             },
 
-            applyPresetValues() {
+            applyPresetValues(presetKey) {
                 if (this.isLabMode) return;
-                const pKey = document.getElementById('presetSelect').value;
+                const pKey = presetKey || document.getElementById('presetSelect').value;
                 const config = this.presets[pKey];
                 if (!config) return;
 
+                document.getElementById('presetSelect').value = pKey;
                 this.currentAlgMode = config.filter;
                 document.getElementById('intensitySlider').value = config.intensity;
                 document.getElementById('sliderBlack').value = config.black;
                 document.getElementById('sliderGamma').value = config.gamma;
                 document.getElementById('sliderWhite').value = config.white;
+                
                 this.updateLevelLabels();
                 this.dispatchProcessing();
                 this.updateInterfaceLabels();
+                this.syncPresetUI();
             },
 
-            generateShareableCode() {
-                const activeAlg = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
-                const configObj = {
-                    "v": APP_VERSION,
-                    "alg": activeAlg,
-                    "std": parseInt(document.getElementById('intensitySlider').value),
-                    "b": parseInt(document.getElementById('sliderBlack').value),
-                    "g": parseInt(document.getElementById('sliderGamma').value),
-                    "w": parseInt(document.getElementById('sliderWhite').value)
-                };
-                const base64Str = btoa(JSON.stringify(configObj));
-                document.getElementById('shareCodeField').value = "ASW1:" + base64Str;
-                this.updateStatus("Código analítico generado.", "#22c55e");
+            renderPresetButtonGrid() {
+                const grid = document.getElementById('presetButtonGrid');
+                const select = document.getElementById('presetSelect');
+                grid.innerHTML = '';
+                Array.from(select.options).forEach(opt => {
+                    const btn = document.createElement('button');
+                    btn.type = 'button';
+                    btn.textContent = opt.textContent;
+                    btn.dataset.value = opt.value;
+                    btn.addEventListener('click', () => this.applyPresetValues(opt.value));
+                    grid.appendChild(btn);
+                });
             },
 
-            applyShareableCode() {
-                const code = document.getElementById('shareCodeField').value.trim();
-                if (!code.startsWith("ASW1:")) {
-                    alert("Aviso de Compatibilidad: El código analítico ingresado no es soportado o es incompatible con la firma de esta versión (ASW1).");
-                    return;
+            renderCleanPresetChips() {
+                const container = document.getElementById('cleanPresetsScroll');
+                container.innerHTML = '';
+                this.cleanPresetsList.forEach(item => {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'clean-chip';
+                    chip.textContent = item.label;
+                    chip.dataset.value = item.id;
+                    chip.addEventListener('click', () => this.applyPresetValues(item.id));
+                    container.appendChild(chip);
+                });
+            },
+
+            syncPresetUI() {
+                const val = document.getElementById('presetSelect').value;
+                
+                const grid = document.getElementById('presetButtonGrid');
+                if (grid) {
+                    Array.from(grid.children).forEach(btn => {
+                        btn.classList.toggle('active', btn.dataset.value === val);
+                    });
                 }
-                try {
-                    const base64Str = code.substring(5);
-                    const configObj = JSON.parse(atob(base64Str));
-                    
-                    if (this.isLabMode) {
-                        document.getElementById('filterSelect').value = configObj.alg;
-                    } else {
-                        this.currentAlgMode = configObj.alg;
-                    }
-                    document.getElementById('intensitySlider').value = configObj.std;
-                    document.getElementById('sliderBlack').value = configObj.b;
-                    document.getElementById('sliderGamma').value = configObj.g;
-                    document.getElementById('sliderWhite').value = configObj.w;
 
-                    this.updateLevelLabels();
-                    this.updateInterfaceLabels();
-                    this.dispatchProcessing();
-                    this.requestWebGLRender();
-                    this.updateStatus("Configuración inyectada con éxito.", "#22c55e");
-                } catch (e) {
-                    alert("Error estructural al parsear la cadena analítica base64.");
+                const cleanScroll = document.getElementById('cleanPresetsScroll');
+                if (cleanScroll) {
+                    Array.from(cleanScroll.children).forEach(chip => {
+                        chip.classList.toggle('active', chip.dataset.value === val);
+                    });
                 }
             },
 
             setupEventListeners() {
                 document.getElementById('tabSimple').addEventListener('click', () => this.switchUIMode(false));
                 document.getElementById('tabProfesional').addEventListener('click', () => this.switchUIMode(true));
-                document.getElementById('presetSelect').addEventListener('change', () => this.applyPresetValues());
+                document.getElementById('presetSelect').addEventListener('change', (e) => this.applyPresetValues(e.target.value));
 
                 document.getElementById('btnGenerateCode').addEventListener('click', () => this.generateShareableCode());
                 document.getElementById('btnApplyCode').addEventListener('click', () => this.applyShareableCode());
-                document.getElementById('btnCopyCode').addEventListener('click', async () => {
-                    const field = document.getElementById('shareCodeField');
-                    if (!field.value) { this.updateStatus("No hay ningún código que copiar.", "#ef4444"); return; }
-                    try {
-                        await navigator.clipboard.writeText(field.value);
-                        this.updateStatus("Código copiado al portapapeles.", "#22c55e");
-                    } catch (err) {
-                        field.select();
-                        this.updateStatus("Selecciona y copia el código manualmente.", "#f59e0b");
-                    }
-                });
 
-                document.getElementById('importJsonInput').addEventListener('change', (e) => {
-                    const file = e.target.files[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        try {
-                            const parsed = JSON.parse(event.target.result);
-                            if (!parsed.processing || !parsed.processing.algorithm || parsed.processing.targetStd === undefined) {
-                                throw new Error("Estructura incompatible o JSON corrupto.");
-                            }
-
-                            const proc = parsed.processing;
-                            if (this.isLabMode) {
-                                document.getElementById('filterSelect').value = proc.algorithm;
-                            } else {
-                                this.currentAlgMode = proc.algorithm;
-                            }
-
-                            document.getElementById('intensitySlider').value = proc.targetStd;
-
-                            if (proc.levels) {
-                                document.getElementById('sliderBlack').value = proc.levels.black ?? 0;
-                                document.getElementById('sliderGamma').value = proc.levels.gamma ?? 100;
-                                document.getElementById('sliderWhite').value = proc.levels.white ?? 255;
-                            }
-
-                            this.updateLevelLabels();
-                            this.updateInterfaceLabels();
-                            this.dispatchProcessing();
-                            this.requestWebGLRender();
-                            this.updateStatus("Configuración JSON importada con éxito.", "#22c55e");
-                        } catch (err) {
-                            alert("Fallo estructural al importar el archivo JSON: " + err.message);
-                            this.updateStatus("Fallo en parseo JSON.", "#ef4444");
-                        }
-                    };
-                    reader.readAsText(file);
-                    e.target.value = "";
-                });
-
-                document.getElementById('toggleManualBtn').addEventListener('click', () => {
-                    const panel = document.getElementById('manualPanel');
-                    if(panel.classList.contains('hidden')) {
-                        panel.classList.remove('hidden');
-                    } else {
-                        panel.classList.add('hidden');
-                    }
-                });
-                document.getElementById('closeManualBtn').addEventListener('click', () => {
-                    document.getElementById('manualPanel').classList.add('hidden');
-                });
-
-                document.getElementById('uploadInput').addEventListener('change', async (e) => {
+                const handleFileUpload = async (e) => {
                     if (!e.target.files[0]) return;
                     try {
                         const { bitmap, telemetry } = await ImageLoader.processUploadedFile(e.target.files[0]);
                         document.getElementById('telSize').innerText = telemetry.size;
                         this.loadBitmapIntoPipeline(bitmap);
                     } catch (err) { this.updateStatus(err.message, "#ef4444"); }
-                });
+                };
+
+                document.getElementById('uploadInput').addEventListener('change', handleFileUpload);
+                document.getElementById('uploadInputClean').addEventListener('change', handleFileUpload);
 
                 document.getElementById('captureBtn').addEventListener('click', async () => {
                     const video = document.getElementById('videoPreview');
-                    if (!CameraController.stream || video.paused || video.videoWidth === 0 || video.videoHeight === 0) return;
-                    
+                    if (!CameraController.stream || video.paused || video.videoWidth === 0) return;
                     this.offscreenCanvas.width = video.videoWidth; 
                     this.offscreenCanvas.height = video.videoHeight;
                     this.offscreenCanvas.getContext('2d').drawImage(video, 0, 0);
@@ -1730,121 +1972,63 @@
                 
                 document.getElementById('intensitySlider').addEventListener('input', () => this.dispatchProcessing());
 
+                let touchStartY = 0;
+
                 const startHold = (e) => {
-                    e.preventDefault();
                     if (!this.currentOriginalData) return;
+                    if (e.type === 'touchstart') {
+                        touchStartY = e.touches[0].clientY;
+                    }
                     this.isHoldingOriginal = true;
                     WebGL2Pipeline.render(this.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
                 };
 
+                const moveHold = (e) => {
+                    if (!this.isHoldingOriginal) return;
+                    if (e.type === 'touchmove') {
+                        const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
+                        if (deltaY > 8) {
+                            endHold(e);
+                        }
+                    }
+                };
+
                 const endHold = (e) => {
-                    e.preventDefault();
                     if (!this.isHoldingOriginal) return;
                     this.isHoldingOriginal = false;
                     this.requestWebGLRender();
                 };
 
-                const startHoldKey = (e) => {
-                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                    if (e.repeat) return;
-                    startHold(e);
-                };
-                const endHoldKey = (e) => {
-                    if (e.key !== 'Enter' && e.key !== ' ') return;
-                    endHold(e);
-                };
-
-                const holdBtn = document.getElementById('holdViewBtn');
-                holdBtn.addEventListener('mousedown', startHold);
-                holdBtn.addEventListener('mouseup', endHold);
-                holdBtn.addEventListener('mouseleave', endHold);
-                holdBtn.addEventListener('touchstart', startHold, { passive: false });
-                holdBtn.addEventListener('touchend', endHold, { passive: false });
-                holdBtn.addEventListener('touchcancel', endHold, { passive: false });
-                holdBtn.addEventListener('keydown', startHoldKey);
-                holdBtn.addEventListener('keyup', endHoldKey);
-                holdBtn.addEventListener('blur', endHold);
-
-                const cleanHoldBtn = document.getElementById('cleanHoldViewBtn');
-                cleanHoldBtn.addEventListener('mousedown', startHold);
-                cleanHoldBtn.addEventListener('mouseup', endHold);
-                cleanHoldBtn.addEventListener('mouseleave', endHold);
-                cleanHoldBtn.addEventListener('touchstart', startHold, { passive: false });
-                cleanHoldBtn.addEventListener('touchend', endHold, { passive: false });
-                cleanHoldBtn.addEventListener('touchcancel', endHold, { passive: false });
-                cleanHoldBtn.addEventListener('keydown', startHoldKey);
-                cleanHoldBtn.addEventListener('keyup', endHoldKey);
-                cleanHoldBtn.addEventListener('blur', endHold);
+                ['holdViewBtn', 'cleanHoldViewBtn'].forEach(id => {
+                    const btn = document.getElementById(id);
+                    if (!btn) return;
+                    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+                    btn.addEventListener('mousedown', startHold);
+                    btn.addEventListener('mouseup', endHold);
+                    btn.addEventListener('mouseleave', endHold);
+                    btn.addEventListener('touchstart', startHold, { passive: true });
+                    btn.addEventListener('touchmove', moveHold, { passive: true });
+                    btn.addEventListener('touchend', endHold, { passive: true });
+                    btn.addEventListener('touchcancel', endHold, { passive: true });
+                });
 
                 document.getElementById('cleanScreenBtn').addEventListener('click', () => { document.body.classList.add('clean-screen'); });
                 document.getElementById('restoreScreenBtn').addEventListener('click', () => { document.body.classList.remove('clean-screen'); this.requestWebGLRender(); });
-
-                document.getElementById('geoAuthCheck').addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        const confirmado = window.confirm(
-                            "Tu ubicación se usará solo para incluirla en el archivo exportado. " +
-                            "No se envía a ningún servidor: todo el procesamiento ocurre en tu dispositivo.\n\n" +
-                            "¿Quieres continuar?"
-                        );
-                        if (!confirmado) { e.target.checked = false; return; }
-                        document.getElementById('metadataDisplay').classList.remove('hidden');
-                        document.getElementById('btnCopyGPS').classList.remove('hidden');
-                        GPSManager.requestLocation();
-                    } else {
-                        document.getElementById('metadataDisplay').classList.add('hidden');
-                        document.getElementById('btnCopyGPS').classList.add('hidden');
-                    }
-                });
-
-                document.getElementById('btnCopyGPS').addEventListener('click', async () => {
-                    if (!GPSManager.telemetry) { UIController.updateStatus("Aún no hay coordenadas disponibles.", "#ef4444"); return; }
-                    const text = `${GPSManager.telemetry.lat.toFixed(5)}, ${GPSManager.telemetry.lon.toFixed(5)}`;
-                    try {
-                        await navigator.clipboard.writeText(text);
-                        UIController.updateStatus("Coordenadas copiadas al portapapeles.", "#22c55e");
-                    } catch (err) {
-                        UIController.updateStatus("No se pudieron copiar automáticamente. Selecciona el texto manualmente.", "#f59e0b");
-                    }
-                });
-
-                const saveFavBtn = document.getElementById('saveFavBtn');
-                if (saveFavBtn) saveFavBtn.addEventListener('click', () => FavoritesManager.saveActive());
-                
-                document.getElementById('favSelectSimple').addEventListener('change', (e) => FavoritesManager.loadConfig(e.target.value));
-                const favSelectPro = document.getElementById('favSelectPro');
-                if (favSelectPro) favSelectPro.addEventListener('change', (e) => FavoritesManager.loadConfig(e.target.value));
-
-                document.getElementById('deleteFavBtnSimple').addEventListener('click', () => FavoritesManager.deleteSelected('favSelectSimple'));
-                const deleteFavBtnPro = document.getElementById('deleteFavBtnPro');
-                if (deleteFavBtnPro) deleteFavBtnPro.addEventListener('click', () => FavoritesManager.deleteSelected('favSelectPro'));
-
-                document.getElementById('exportLibraryBtn').addEventListener('click', () => FavoritesManager.exportLibrary());
-                document.getElementById('importLibraryInput').addEventListener('change', (e) => {
-                    FavoritesManager.importLibrary(e.target.files[0]);
-                    e.target.value = '';
-                });
 
                 document.getElementById('saveBtn').addEventListener('click', () => ExportManager.exportDocument());
                 document.getElementById('cleanExportBtn').addEventListener('click', () => ExportManager.exportDocument());
             },
 
             loadBitmapIntoPipeline(bitmap) {
-                const maxPixels = 16777216; 
-                if (bitmap.width * bitmap.height > maxPixels) {
-                    this.updateStatus("Error: Imagen excede los 16 MP.", "#ef4444");
-                    bitmap.close(); return;
-                }
-                if (bitmap.width <= 0 || bitmap.height <= 0) {
-                    this.updateStatus("Error: Dimensiones de archivo corruptas o 0x0.", "#ef4444");
-                    bitmap.close(); return;
-                }
-
+                if (bitmap.width * bitmap.height > 16777216) return;
                 ProcessingController.imageVersion++; 
                 this.currentProcessedData = null; 
 
                 const glCanvas = document.getElementById('canvasView');
                 glCanvas.width = bitmap.width; 
                 glCanvas.height = bitmap.height;
+
+                document.getElementById('viewerCard').style.aspectRatio = `${bitmap.width} / ${bitmap.height}`;
                 
                 this.offscreenCanvas.width = bitmap.width; 
                 this.offscreenCanvas.height = bitmap.height;
@@ -1852,14 +2036,13 @@
                 ctx.drawImage(bitmap, 0, 0);
                 
                 this.currentOriginalData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-                
                 document.getElementById('telResolution').innerText = `${bitmap.width} x ${bitmap.height} px`;
                 document.getElementById('videoPreview').classList.add('hidden');
                 document.getElementById('canvasView').classList.remove('hidden');
 
                 WebGL2Pipeline.render(this.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
 
-                if (!this.isLabMode) { this.applyPresetValues(); } else { this.dispatchProcessing(); }
+                if (!this.isLabMode) this.applyPresetValues(); else this.dispatchProcessing();
                 bitmap.close();
             },
 
@@ -1894,7 +2077,8 @@
             },
 
             updateStatus(msg, color) {
-                const el = document.getElementById('telStatus'); el.innerText = msg; el.style.color = color;
+                const el = document.getElementById('telStatus'); 
+                if(el) { el.innerText = msg; el.style.color = color; }
             }
         };
 
