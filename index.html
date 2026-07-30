@@ -2,2133 +2,552 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArqueoStretch</title>
-    <style>
-        *, *::before, *::after {
-            box-sizing: border-box;
-        }
-
-        :root {
-            --bg-main: #09090b;
-            --bg-card: #141416;
-            --border: #27272a;
-            --text-main: #f4f4f5;
-            --text-muted: #a1a1aa;
-            --accent: #2563eb;
-            --accent-hover: #1d4ed8;
-            --success: #16a34a;
-            --danger: #ef4444;
-            --danger-hover: #dc2626;
-            --left-width: 55%;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            margin: 0;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            box-sizing: border-box;
-        }
-
-        /* Bloqueo total de scroll en pantalla limpia */
-        html:has(body.clean-screen),
-        body.clean-screen {
-            overflow: hidden !important;
-            height: 100vh !important;
-            position: fixed;
-            width: 100%;
-            touch-action: none;
-        }
-
-        button {
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
-            touch-action: manipulation;
-        }
-
-        button:focus-visible,
-        select:focus-visible,
-        input:focus-visible,
-        textarea:focus-visible,
-        .tab-btn:focus-visible {
-            outline: 2px solid var(--accent);
-            outline-offset: 2px;
-        }
-
-        .container {
-            width: 100%;
-            max-width: 900px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-
-        header { text-align: center; }
-        header h1 { font-size: 1.8rem; margin: 0 0 4px 0; font-weight: 700; }
-        header p { font-size: 0.85rem; color: var(--text-muted); margin: 0; }
-
-        .header-links {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 6px;
-        }
-
-        .btn-github {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            background: #18181b;
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            text-decoration: none;
-            transition: background 0.15s ease;
-        }
-
-        .btn-github:hover {
-            background: #27272a;
-        }
-
-        /* Ocultar elementos principales en modo pantalla limpia */
-        body.clean-screen header,
-        body.clean-screen .controls-card,
-        body.clean-screen #wrapperSimple.hidden ~ .pro-card,
-        body.clean-screen .histogram-container,
-        body.clean-screen .tabs-wrapper,
-        body.clean-screen #cleanScreenBtn,
-        body.clean-screen #manualPanel,
-        body.clean-screen #toggleManualBtn,
-        body.clean-screen .image-group-buttons,
-        body.clean-screen .telemetry-panel,
-        body.clean-screen .resizer,
-        body.clean-screen .resizer-v,
-        body.clean-screen #holdViewBtn,
-        body.clean-screen #captureBtn,
-        body.clean-screen #uploadLabel {
-            display: none !important;
-        }
-
-        body.clean-screen .image-workshop-card {
-            border: none !important;
-            background: transparent !important;
-            padding: 0 !important;
-            width: 100% !important;
-            max-width: 100% !important;
-        }
-
-        body.clean-screen .viewer-card {
-            aspect-ratio: auto;
-            flex-grow: 1;
-            height: calc(100vh - 120px) !important;
-            max-height: none !important;
-        }
-
-        /* Barra flotante de pantalla limpia */
-        .clean-bar {
-            display: none;
-            width: 100%;
-            max-width: 900px;
-            background: rgba(20, 20, 22, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 10px;
-            box-sizing: border-box;
-            flex-direction: column;
-            gap: 8px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
-        }
-
-        body.clean-screen .clean-bar {
-            display: flex !important;
-            position: fixed;
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 9999;
-            width: calc(100% - 24px);
-        }
-
-        .clean-presets-scroll {
-            display: flex;
-            gap: 6px;
-            overflow-x: auto;
-            padding-bottom: 2px;
-            scrollbar-width: none;
-        }
-
-        .clean-presets-scroll::-webkit-scrollbar {
-            display: none;
-        }
-
-        .clean-chip {
-            flex: 0 0 auto;
-            background: #27272a;
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 6px 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            white-space: nowrap;
-        }
-
-        .clean-chip.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        .clean-actions-row {
-            display: flex;
-            gap: 6px;
-            width: 100%;
-        }
-
-        .clean-actions-row button,
-        .clean-actions-row label {
-            flex: 1;
-            padding: 10px 4px;
-            font-size: 0.78rem;
-            font-weight: 700;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .tabs-wrapper {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            background: #18181b;
-            padding: 4px;
-            border-radius: 10px;
-            border: 1px solid var(--border);
-        }
-
-        .tab-btn {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            padding: 10px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            border-radius: 7px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .tab-btn.active {
-            background: var(--bg-card);
-            color: var(--text-main);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.4);
-            border: 1px solid var(--border);
-        }
-
-        /* Preview anclada (Sticky) en Móvil */
-        .image-workshop-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            position: sticky;
-            top: 8px;
-            z-index: 20;
-        }
-
-        /* Barra divisora horizontal en Móvil */
-        .resizer-v {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            height: 14px;
-            cursor: row-resize;
-            user-select: none;
-            touch-action: none;
-            margin-top: 2px;
-            width: 100%;
-        }
-
-        .resizer-v::before {
-            content: '';
-            width: 45px;
-            height: 4px;
-            background: var(--border);
-            border-radius: 2px;
-            transition: background 0.15s ease, width 0.15s ease;
-        }
-
-        .resizer-v:hover::before,
-        .resizer-v.dragging::before {
-            background: var(--accent);
-            width: 70px;
-        }
-
-        .app-left-col, .app-right-col {
-            display: contents;
-        }
-
-        .resizer {
-            display: none;
-        }
-
-        /* MODO ESCRITORIO (PC) */
-        @media (min-width: 1100px) {
-            html, body {
-                height: 100vh;
-                overflow: hidden;
-            }
-
-            body { 
-                padding: 16px; 
-            }
-
-            .container {
-                max-width: 100%;
-                height: calc(100vh - 32px);
-                flex-direction: row;
-                align-items: stretch;
-                gap: 0;
-            }
-
-            .app-left-col {
-                display: flex;
-                flex-direction: column;
-                gap: 10px;
-                flex: 0 0 var(--left-width, 55%);
-                min-width: 300px;
-                max-width: calc(100% - 300px);
-                height: 100%;
-                overflow: hidden;
-            }
-
-            /* Barra divisora vertical para PC */
-            .resizer {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                width: 14px;
-                cursor: col-resize;
-                user-select: none;
-                touch-action: none;
-                z-index: 100;
-                margin: 0 4px;
-                position: relative;
-            }
-
-            .resizer::before {
-                content: '';
-                width: 4px;
-                height: 48px;
-                background: var(--border);
-                border-radius: 2px;
-                transition: background 0.15s ease, height 0.15s ease;
-            }
-
-            .resizer:hover::before,
-            .resizer.dragging::before {
-                background: var(--accent);
-                height: 70px;
-            }
-
-            .resizer-v {
-                display: none !important;
-            }
-
-            .app-right-col {
-                display: flex;
-                flex-direction: column;
-                gap: 14px;
-                flex: 1 1 0;
-                min-width: 300px;
-                height: 100%;
-                overflow-y: auto;
-                padding-left: 4px;
-                padding-right: 6px;
-            }
-
-            .app-right-col::-webkit-scrollbar {
-                width: 6px;
-            }
-            .app-right-col::-webkit-scrollbar-track {
-                background: var(--bg-main);
-            }
-            .app-right-col::-webkit-scrollbar-thumb {
-                background: var(--border);
-                border-radius: 4px;
-            }
-
-            #imageWorkshopCard {
-                position: static !important;
-                top: auto !important;
-                z-index: auto !important;
-                flex: 1;
-                display: flex;
-                flex-direction: column;
-                min-height: 0;
-            }
-
-            .viewer-card {
-                flex: 1;
-                height: 100% !important;
-                max-height: none !important;
-                aspect-ratio: auto !important;
-                min-height: 200px;
-            }
-        }
-
-        .viewer-card {
-            background: #000;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            overflow: hidden;
-            position: relative;
-            width: 100%;
-            aspect-ratio: 4/3;
-            max-height: 60vh;
-            box-shadow: 0 12px 32px rgba(0,0,0,0.7);
-            user-select: none;
-            touch-action: none;
-        }
-
-        .viewer-card video, #canvasView {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            top: 0;
-            left: 0;
-            object-fit: contain;
-        }
-
-        .zoom-controls {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: rgba(20, 20, 22, 0.85);
-            backdrop-filter: blur(8px);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 4px 6px;
-            z-index: 10;
-        }
-
-        .zoom-controls button {
-            background: #27272a;
-            border: 1px solid var(--border);
-            color: var(--text-main);
-            padding: 6px 8px;
-            font-size: 0.78rem;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background 0.15s ease;
-        }
-
-        .zoom-controls button:hover {
-            background: var(--accent);
-            border-color: var(--accent);
-        }
-
-        .zoom-controls span {
-            font-family: monospace;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            padding: 0 4px;
-            min-width: 40px;
-            text-align: center;
-        }
-
-        .hidden { display: none !important; }
-
-        .histogram-container {
-            background: #0b0b0c;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            box-sizing: border-box;
-            width: 100%;
-        }
-
-        #histogramCanvas {
-            width: 100%;
-            height: 100px;
-            background: #101012;
-            border-radius: 4px;
-            display: block;
-        }
-
-        .levels-sliders {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .level-row {
-            display: grid;
-            grid-template-columns: 90px 1fr 40px;
-            align-items: center;
-            font-size: 0.75rem;
-            font-family: monospace;
-        }
-
-        .controls-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .control-group { display: flex; flex-direction: column; gap: 6px; }
-        label.setting-label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; }
-        
-        select, button, input[type="text"], input[type="range"], textarea {
-            font-family: inherit; background: #1e1e20; color: var(--text-main);
-            border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-size: 0.88rem;
-        }
-
-        textarea { font-family: monospace; resize: none; font-size: 0.8rem; }
-
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-        .preset-button-grid {
-            display: none;
-            grid-template-columns: 1fr 1fr;
-            gap: 8px;
-            margin-top: 4px;
-        }
-
-        .preset-button-grid button {
-            padding: 12px 6px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            text-align: center;
-            line-height: 1.25;
-            background: #27272a;
-            color: var(--text-main);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        .preset-button-grid button.active {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-        }
-
-        button.btn-primary { background: var(--accent); color: #fff; border: none; font-weight: 600; cursor: pointer; }
-        button.btn-primary:hover { background: var(--accent-hover); }
-        button.btn-success { background: var(--success); color: #fff; border: none; font-weight: 600; cursor: pointer; }
-        button.btn-danger { background: var(--danger); color: #fff; border: none; font-weight: 600; cursor: pointer; }
-        button.btn-danger:hover { background: var(--danger-hover); }
-        
-        .btn-hold-view {
-            background: #27272a; 
-            color: #ffffff; 
-            border: 1px solid #3f3f46;
-            font-weight: 700; 
-            cursor: pointer; 
-            padding: 10px 4px; 
-            font-size: clamp(0.65rem, 3.2vw, 0.85rem);
-            letter-spacing: 0.2px; 
-            border-radius: 8px; 
-            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
-            width: 100%; 
-            max-width: 100%;
-            box-sizing: border-box; 
-            text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: block;
-        }
-        .btn-hold-view:active { background: #18181b; }
-
-        .telemetry-panel {
-            background: #09090b; border: 1px solid var(--border); border-radius: 8px;
-            padding: 12px; font-family: monospace; font-size: 0.75rem; color: #2563eb;
-            display: flex; flex-direction: column; gap: 4px;
-        }
-        .telemetry-row { display: flex; justify-content: space-between; }
-        .telemetry-row span:last-child { color: var(--text-main); }
-
-        .fav-row { display: flex; gap: 8px; align-items: center; }
-        .fav-row select { flex-grow: 1; }
-        .metadata-box {
-            font-family: monospace; font-size: 0.7rem; background: #09090b;
-            padding: 6px; border-radius: 6px; border: 1px solid var(--border);
-            color: var(--text-muted); word-break: break-all;
-        }
-
-        .manual-card {
-            background: #101012; border: 1px solid var(--border); border-radius: 8px; padding: 10px;
-        }
-        .manual-header { font-size: 0.72rem; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; margin-bottom: 2px; text-transform: uppercase; }
-
-        .pro-card { display: none; }
-        .pro-only { display: none !important; }
-        .simple-only { display: block !important; }
-
-        #wrapperSimple.hidden ~ .pro-card { display: flex !important; }
-        #wrapperSimple.hidden ~ #configLibraryCard .pro-only { display: block !important; }
-        #wrapperSimple.hidden ~ #configLibraryCard .simple-only { display: none !important; }
-
-        .ack-list {
-            margin: 0;
-            padding-left: 18px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            line-height: 1.5;
-        }
-
-        .ack-list li {
-            margin-bottom: 6px;
-        }
-
-        @media (max-width: 600px) {
-            body {
-                padding: 8px;
-                overflow-x: hidden;
-            }
-
-            .container {
-                gap: 10px;
-            }
-
-            header h1 {
-                font-size: 1.45rem;
-            }
-
-            .grid-2 {
-                grid-template-columns: 1fr !important;
-                gap: 8px;
-            }
-
-            .fav-row {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 6px;
-            }
-
-            .fav-row select, 
-            .fav-row button {
-                width: 100% !important;
-            }
-
-            input[type="range"] {
-                padding: 8px 4px !important;
-                width: 100% !important;
-            }
-
-            .level-row {
-                display: flex !important;
-                flex-wrap: wrap;
-                justify-content: space-between;
-                align-items: center;
-                gap: 4px;
-                padding: 8px 0;
-                border-bottom: 1px dashed var(--border);
-            }
-
-            .level-row span:first-child {
-                font-weight: 600;
-                font-size: 0.78rem;
-            }
-
-            .level-row input[type="range"] {
-                order: 3;
-                margin-top: 6px;
-            }
-
-            .level-row span:last-child {
-                background: #18181b;
-                padding: 2px 6px;
-                border-radius: 4px;
-            }
-
-            body:not(.pro-mode-active) #presetSelectLabel,
-            body:not(.pro-mode-active) #presetSelect {
-                display: none;
-            }
-
-            body:not(.pro-mode-active) .preset-button-grid {
-                display: grid;
-            }
-        }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>ArqueoStretch — Realce de arte rupestre</title>
+
+    <meta name="description" content="Realce de pigmento y microrrelieve en fotografía de arte rupestre. El procesamiento ocurre en tu dispositivo: las fotos no se suben a ningún servidor.">
+    <meta name="theme-color" content="#101013">
+    <meta name="color-scheme" content="dark">
+
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="ArqueoStretch">
+    <meta property="og:description" content="Realce de pigmento y microrrelieve en fotografía de arte rupestre, directamente en el navegador.">
+    <meta property="og:image" content="icon-512.png">
+    <meta property="og:locale" content="es_ES">
+    <meta name="twitter:card" content="summary_large_image">
+
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="icon-512.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-    <div class="container" id="mainContainer">
-        <!-- Columna Izquierda (Preview y Entradas) -->
-        <div class="app-left-col">
-            <header>
-                <h1>ArqueoStretch</h1>
-                <p>Herramienta modular para el realce y análisis de pinturas rupestres</p>
-                <div class="header-links">
-                    <span id="versionLabel" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.7;">v0.3.1</span>
-                    <a href="https://github.com/adrianxdd7/ArqueoStretch" target="_blank" rel="noopener noreferrer" class="btn-github">
-                        <svg height="14" width="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
-                        Ver en GitHub
-                    </a>
-                </div>
-            </header>
+<!-- =====================================================================
+     Juego de iconos. Trazo de 1.6, rejilla de 16, todos heredan el color
+     del texto. Sustituyen a los emojis, que se dibujan distinto en cada
+     sistema y compiten cromáticamente con la fotografía.
+     ===================================================================== -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+        <symbol id="i-camera" viewBox="0 0 16 16">
+            <path d="M2 5.6h2.3l1.1-1.7h5.2l1.1 1.7H14v7.4H2z"/>
+            <circle cx="8" cy="9.3" r="2.3"/>
+        </symbol>
+        <symbol id="i-image" viewBox="0 0 16 16">
+            <rect x="2" y="3" width="12" height="10" rx="1.5"/>
+            <circle cx="5.7" cy="6.4" r="1.1"/>
+            <path d="M2.4 12.2 6.3 8.5l2.2 2.1 2.1-1.9 3 2.8"/>
+        </symbol>
+        <symbol id="i-download" viewBox="0 0 16 16">
+            <path d="M8 2.6v8.1"/>
+            <path d="M4.9 7.6 8 10.7l3.1-3.1"/>
+            <path d="M2.6 13.3h10.8"/>
+        </symbol>
+        <symbol id="i-upload" viewBox="0 0 16 16">
+            <path d="M8 10.7V2.6"/>
+            <path d="M4.9 5.7 8 2.6l3.1 3.1"/>
+            <path d="M2.6 13.3h10.8"/>
+        </symbol>
+        <symbol id="i-trash" viewBox="0 0 16 16">
+            <path d="M2.8 4.6h10.4"/>
+            <path d="M6.3 4.6V3.2h3.4v1.4"/>
+            <path d="M4.3 4.6l.6 8.2h6.2l.6-8.2"/>
+        </symbol>
+        <symbol id="i-plus" viewBox="0 0 16 16">
+            <path d="M8 3.6v8.8M3.6 8h8.8"/>
+        </symbol>
+        <symbol id="i-minus" viewBox="0 0 16 16">
+            <path d="M3.6 8h8.8"/>
+        </symbol>
+        <symbol id="i-fit" viewBox="0 0 16 16">
+            <path d="M2.6 6V2.6H6M10 2.6h3.4V6M13.4 10v3.4H10M6 13.4H2.6V10"/>
+        </symbol>
+        <symbol id="i-eye" viewBox="0 0 16 16">
+            <path d="M1.5 8S3.8 3.8 8 3.8 14.5 8 14.5 8 12.2 12.2 8 12.2 1.5 8 1.5 8z"/>
+            <circle cx="8" cy="8" r="2"/>
+        </symbol>
+        <symbol id="i-crop" viewBox="0 0 16 16">
+            <path d="M5.4 2v9.6a1 1 0 0 0 1 1H14"/>
+            <path d="M2 5.4h7.6a1 1 0 0 1 1 1V14"/>
+        </symbol>
+        <symbol id="i-x" viewBox="0 0 16 16">
+            <path d="M4.2 4.2l7.6 7.6M11.8 4.2l-7.6 7.6"/>
+        </symbol>
+        <symbol id="i-save" viewBox="0 0 16 16">
+            <path d="M2.6 3.6a1 1 0 0 1 1-1h6.8l3 3v6.8a1 1 0 0 1-1 1H3.6a1 1 0 0 1-1-1z"/>
+            <path d="M5.5 2.6v3.4h4.4V2.6"/>
+            <path d="M5.5 13.4V9.8h5v3.6"/>
+        </symbol>
+        <symbol id="i-copy" viewBox="0 0 16 16">
+            <rect x="5.6" y="5.6" width="7.8" height="7.8" rx="1.2"/>
+            <path d="M10.4 5.6V3.6a1 1 0 0 0-1-1H3.6a1 1 0 0 0-1 1v5.8a1 1 0 0 0 1 1h2"/>
+        </symbol>
+        <symbol id="i-info" viewBox="0 0 16 16">
+            <circle cx="8" cy="8" r="6"/>
+            <path d="M8 7.3v4.1"/>
+            <circle cx="8" cy="4.9" r=".75" fill="currentColor" stroke="none"/>
+        </symbol>
+        <symbol id="i-expand" viewBox="0 0 16 16">
+            <path d="M6.2 2.4H2.4v3.8M9.8 13.6h3.8V9.8M13.6 6.2V2.4H9.8M2.4 9.8v3.8h3.8"/>
+        </symbol>
+        <symbol id="i-sliders" viewBox="0 0 16 16">
+            <path d="M2.4 4.8h3.2M8.8 4.8h4.8M2.4 11.2h6.4M12 11.2h1.6"/>
+            <circle cx="7.2" cy="4.8" r="1.5"/>
+            <circle cx="10.4" cy="11.2" r="1.5"/>
+        </symbol>
+        <symbol id="i-pin" viewBox="0 0 16 16">
+            <path d="M13 6.9c0 3.6-5 7.9-5 7.9s-5-4.3-5-7.9a5 5 0 0 1 10 0z"/>
+            <circle cx="8" cy="6.7" r="1.8"/>
+        </symbol>
+        <symbol id="i-github" viewBox="0 0 16 16">
+            <path fill="currentColor" stroke="none" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </symbol>
+    </defs>
+</svg>
 
-            <div class="tabs-wrapper">
-                <button class="tab-btn active" id="tabSimple">🪨 Modo simple</button>
-                <button class="tab-btn" id="tabProfesional">🔬 Modo profesional</button>
+<noscript>
+    <div class="fatal">
+        <h2>Hace falta JavaScript</h2>
+        <p>ArqueoStretch procesa las imágenes dentro de tu navegador, así que necesita JavaScript
+        activado. Actívalo y recarga la página.</p>
+    </div>
+</noscript>
+
+<div class="app" id="mainContainer">
+
+    <!-- ============================ VISOR ============================ -->
+    <div class="app__viewer-col">
+
+        <header class="masthead">
+            <div>
+                <h1 class="masthead__title">ArqueoStretch</h1>
+                <p class="masthead__sub">Realce de pigmento y microrrelieve en fotografía de arte rupestre</p>
             </div>
-
-            <button id="cleanScreenBtn" style="width:100%; background:#3f3f46; font-weight:600; font-size:0.82rem; padding:10px; color:#fff; border:none; border-radius:8px; cursor:pointer; margin-bottom: 2px;">📱 PANTALLA LIMPIA</button>
-
-            <!-- Tarjeta Anclada (Sticky) limpia -->
-            <div class="image-workshop-card" id="imageWorkshopCard">
-                <div class="viewer-card" id="viewerCard">
-                    <div id="viewportInner" style="width:100%; height:100%; position:relative; transform-origin: 0 0;">
-                        <video id="videoPreview" autoplay playsinline muted aria-label="Vista previa en directo de la cámara"></video>
-                        <canvas id="canvasView" class="hidden" role="img" aria-label="Vista previa de la imagen procesada en tiempo real"></canvas>
-                        <div id="roiOverlay" class="hidden" style="position:absolute; border:2px dashed #22c55e; background:rgba(34,197,94,0.15); pointer-events:none; box-sizing:border-box;"></div>
-                    </div>
-
-                    <div class="zoom-controls">
-                        <button id="zoomOutBtn" title="Alejar (-)">➖</button>
-                        <span id="zoomLevelLabel">100%</span>
-                        <button id="zoomInBtn" title="Acercar (+)">➕</button>
-                        <button id="zoomResetBtn" title="Restablecer (1:1)">🔁</button>
-                    </div>
-                </div>
-
-                <button id="holdViewBtn" class="btn-hold-view">👁️ MANTÉN PULSADO PARA VER EL ORIGINAL</button>
-                
-                <!-- Barra divisora horizontal en Móvil -->
-                <div class="resizer-v" id="resizerV" title="Arrastra hacia arriba/abajo para ajustar la preview"></div>
+            <div class="masthead__meta">
+                <span class="version" id="versionLabel">v0.6</span>
+                <a class="repo-link" href="https://github.com/adrianxdd7/ArqueoStretch" target="_blank" rel="noopener noreferrer">
+                    <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
+                    GitHub
+                </a>
             </div>
+        </header>
 
-            <!-- Botones de Captura e Importación -->
-            <div class="grid-2" style="margin-top: 2px;">
-                <button id="captureBtn" class="btn-primary">📸 CAPTURAR SENSOR (CÁMARA)</button>
-                <label id="uploadLabel" for="uploadInput" style="background:#1e1e20; text-align:center; cursor:pointer; padding:12px; border-radius:8px; font-size:0.85rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center;">📂 IMPORTAR IMAGEN
-                    <input type="file" id="uploadInput" accept="image/*" class="hidden">
-                </label>
-            </div>
+        <div class="segmented" role="tablist" aria-label="Modo de trabajo">
+            <button class="segmented__btn active" id="tabSimple" role="tab" aria-selected="true" type="button">Simple</button>
+            <button class="segmented__btn" id="tabProfesional" role="tab" aria-selected="false" type="button">Profesional</button>
         </div>
 
-        <!-- Barra divisora vertical (PC) -->
-        <div class="resizer" id="resizer" title="Arrastra hacia los lados para ajustar tamaño"></div>
+        <button class="btn btn--block" id="cleanScreenBtn" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-expand"/></svg>
+            Modo campo
+        </button>
 
-        <!-- Columna Derecha (Ajustes y Menús) -->
-        <div class="app-right-col">
-            <button id="toggleManualBtn" class="hidden" style="background: #1e1e20; border: 1px solid var(--border); color: var(--text-main); font-weight: 600; padding: 10px; border-radius: 8px; font-size: 0.85rem; cursor: pointer; width:100%;">ℹ Información sobre algoritmos</button>
-
-            <div id="manualPanel" class="controls-card hidden" style="border-left: 3px solid var(--accent);">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <label class="setting-label" style="color:var(--text-main);">Manual técnico y de interpretación</label>
-                    <button id="closeManualBtn" style="padding:4px 8px; font-size:0.75rem; background:#27272a; border:none; border-radius:4px; cursor:pointer;">Cerrar ✕</button>
+        <div class="stage-wrap" id="imageWorkshopCard">
+            <div class="stage" id="viewerCard">
+                <div class="stage__inner" id="viewportInner">
+                    <video id="videoPreview" autoplay playsinline muted aria-label="Vista previa en directo de la cámara"></video>
+                    <canvas id="canvasView" class="hidden" role="img" aria-label="Imagen procesada"></canvas>
+                    <div class="stage__roi hidden" id="roiOverlay"></div>
                 </div>
-                
-                <div style="max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 4px;">
-                    <div class="manual-card">
-                        <h4 style="margin:0 0 6px 0; font-size:0.85rem;">1. PCA Stretch RGB (Matriz sRGB lineal)</h4>
-                        <div class="manual-header">Explicación técnica</div>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Calcula los autovectores ortogonales de la matriz de covarianza en canales RGB descorrelacionando la información espectral para aplicar un estiramiento lineal extremo.</p>
-                        <div class="manual-header">Explicación para usuarios</div>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Maximiza el contraste cromático de restos degradados de arte rupestre (óxidos de hierro) frente al soporte calizo de la cueva.</p>
-                        <div class="manual-header">Limitaciones</div>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0;">Los colores obtenidos son abstractos y no representan tonalidades reales. Puede amplificar drásticamente el ruido cromático.</p>
-                    </div>
 
-                    <div class="manual-card">
-                        <h4 style="margin:0 0 6px 0; font-size:0.85rem;">2. PCA Stretch YCbCr (BT.601)</h4>
-                        <div class="manual-header">Explicación técnica</div>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Transforma los datos aislando la luminancia antes de procesar la varianza estadística estrictamente sobre los componentes de crominancia pura.</p>
-                        <div class="manual-header">Explicación para usuarios</div>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Útil para discriminar trazos superpuestos o pinturas en abrigos expuestos a condiciones de iluminación solar muy irregular.</p>
-                    </div>
+                <div class="stage__toast hidden" id="viewerToast" role="status" aria-live="polite"></div>
 
-                    <div class="manual-card">
-                        <h4 style="margin:0 0 6px 0; font-size:0.85rem;">3. Difference of Gaussians (DoG 2D)</h4>
-                        <div class="manual-header">Explicación técnica</div>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Filtro espacial convolucional de paso de banda obtenido restando dos matrices desenfocadas con radios gaussianos dispares.</p>
-                        <div class="manual-header">Explicación para usuarios</div>
-                        <p style="font-size:0.72rem; color:var(--text-muted); margin:0 0 4px 0;">Permite delimitar la morfología de grabados rupestres someros, piqueteados o incisiones en micro-relieve sobre piedra.</p>
-                    </div>
+                <div class="stage__zoom">
+                    <button class="btn--icon" id="zoomOutBtn" type="button" aria-label="Alejar la imagen">
+                        <svg class="icon" aria-hidden="true"><use href="#i-minus"/></svg>
+                    </button>
+                    <span class="zoom-level" id="zoomLevelLabel" aria-hidden="true">100%</span>
+                    <button class="btn--icon" id="zoomInBtn" type="button" aria-label="Acercar la imagen">
+                        <svg class="icon" aria-hidden="true"><use href="#i-plus"/></svg>
+                    </button>
+                    <button class="btn--icon" id="zoomResetBtn" type="button" aria-label="Ajustar la imagen a la ventana">
+                        <svg class="icon" aria-hidden="true"><use href="#i-fit"/></svg>
+                    </button>
                 </div>
             </div>
 
-            <div id="wrapperSimple" class="controls-card">
-                <label class="setting-label" for="presetSelect" id="presetSelectLabel">Presets de análisis rápido</label>
-                <select id="presetSelect">
-                    <option value="rojo_oxido">🔴 Rojo óxido / Hematita tenue</option>
-                    <option value="rojo_degradado">🦬 Rojo degradado o lavado (fondo similar)</option>
-                    <option value="amarillo_tenue">🟡 Amarillo, ocre o calcita velada</option>
-                    <option value="negro_carbon">⚫ Carbón vegetal / Negro desvaído</option>
-                    <option value="superposicion_colores">🥪 Superposición de colores (varias capas)</option>
-                    <option value="grabados_relieve">🟤 Grabados e incisiones (microrelieve)</option>
-                    <option value="textura_erosionada">🌧 Textura erosionada / Contornos difusos</option>
-                    <option value="alto_contraste">☀️ Luz solar dura / Sombras profundas</option>
-                </select>
-
-                <div id="presetButtonGrid" class="preset-button-grid" role="group" aria-label="Presets de análisis rápido"></div>
-
-                <div class="control-group" style="margin-top: 8px;">
-                    <label class="setting-label" for="favSelectSimple">⭐ Mis presets guardados</label>
-                    <div class="fav-row">
-                        <select id="favSelectSimple">
-                            <option value="">-- Usar una configuración guardada --</option>
-                        </select>
-                        <button id="deleteFavBtnSimple" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
-                    </div>
-                </div>
+            <!-- La línea de datos del instrumento: estado y medidas junto a
+                 la imagen que describen, no en un panel aparte -->
+            <div class="readout" id="readout" data-kind="ok">
+                <span class="readout__item">
+                    <span class="readout__dot"></span>
+                    <span class="readout__status" id="telStatus">Iniciando</span>
+                </span>
+                <span class="readout__item">px <b id="telResolution">—</b></span>
+                <span class="readout__item">archivo <b id="telSize">—</b></span>
             </div>
 
-            <div class="controls-card pro-card" id="proCardProcessing">
-                <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">1. Configuración del procesamiento</label>
-                <div class="control-group">
-                    <label class="setting-label" for="filterSelect">Algoritmo de procesamiento seleccionado</label>
-                    <select id="filterSelect">
-                        <option value="yds">YDS - General / Amarillos (Espacio YXX)</option>
-                        <option value="ybr">YBR - Rojos (Espacio YXX)</option>
-                        <option value="ybk">YBK - Negros (Espacio YXX)</option>
-                        <option value="yre">YRE - Rojos muy degradados (Espacio YXX)</option>
-                        <option value="lab">LAB - General / Sombras (Espacio LXX)</option>
-                        <option value="lds">LDS - Amarillos (Espacio LXX)</option>
-                        <option value="lre">LRE - Rojos tenues (Espacio LXX)</option>
-                        <option value="crgb">CRGB - Matriz fija rápida para rojos</option>
-                        <option value="pca_rgb">PCA Stretch estándar (sRGB Lineal)</option>
-                        <option value="yuv_stretch">PCA Stretch YCbCr (BT.601)</option>
-                        <option value="dog">Filtro estructural: Difference of Gaussians (DoG 2D)</option>
-                        <option value="unsharp_mask">Realce de micro-textura: Unsharp Mask (GPU)</option>
+            <div class="splitter--v" id="resizerV" role="separator" aria-orientation="horizontal" aria-label="Ajustar la altura del visor" tabindex="0" aria-valuemin="120" aria-valuemax="2000"></div>
+        </div>
+
+        <button class="btn btn-compare" id="holdViewBtn" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>
+            Mantén pulsado para comparar con el original
+        </button>
+
+        <div class="btn-group">
+            <button class="btn btn--primary" id="captureBtn" type="button">
+                <svg class="icon icon--lg" aria-hidden="true"><use href="#i-camera"/></svg>
+                <span id="captureBtnLabel">Usar la cámara</span>
+            </button>
+            <label class="btn" id="uploadLabel" for="uploadInput">
+                <svg class="icon icon--lg" aria-hidden="true"><use href="#i-image"/></svg>
+                Abrir imagen
+                <input type="file" id="uploadInput" accept="image/*" class="visually-hidden-input">
+            </label>
+        </div>
+    </div>
+
+    <div class="splitter" id="resizer" role="separator" aria-orientation="vertical" aria-label="Ajustar el reparto de ancho" tabindex="0" aria-valuemin="25" aria-valuemax="75"></div>
+
+    <!-- ============================ PANELES =========================== -->
+    <div class="app__panel-col">
+
+        <!-- ----- Columna A: análisis ----- -->
+        <div class="panel-group" data-column="a">
+
+            <section class="panel" id="wrapperSimple">
+                <div class="panel__head">
+                    <span class="eyebrow">Pigmento buscado</span>
+                </div>
+                <p class="field__hint">Cada muestra corresponde a la familia de color a la que se ajusta el realce.</p>
+
+                <div class="pigments" id="presetButtonGrid" role="group" aria-label="Presets por pigmento"></div>
+
+                <div class="field" id="presetSelectField">
+                    <label class="field__label" for="presetSelect" id="presetSelectLabel">Elegir de la lista</label>
+                    <select class="select" id="presetSelect"></select>
+                </div>
+
+                <hr class="divider">
+
+                <div class="field">
+                    <label class="field__label" for="favSelectSimple">Configuraciones guardadas</label>
+                    <div class="row">
+                        <select class="select" id="favSelectSimple"></select>
+                        <button class="btn btn--danger btn--sm" id="deleteFavBtnSimple" type="button" aria-label="Borrar la configuración seleccionada">
+                            <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel pro-card" id="proCardProcessing">
+                <div class="panel__head">
+                    <span class="eyebrow">Procesado</span>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="filterSelect">Algoritmo</label>
+                    <select class="select" id="filterSelect">
+                        <option value="yds">YDS — General y amarillos (YXX)</option>
+                        <option value="ybr">YBR — Rojos (YXX)</option>
+                        <option value="ybk">YBK — Negros (YXX)</option>
+                        <option value="yre">YRE — Rojos muy degradados (YXX)</option>
+                        <option value="lab">LAB — General y sombras (LXX)</option>
+                        <option value="lds">LDS — Amarillos (LXX)</option>
+                        <option value="lre">LRE — Rojos tenues (LXX)</option>
+                        <option value="crgb">CRGB — Matriz fija rápida para rojos</option>
+                        <option value="pca_rgb">PCA sobre sRGB lineal</option>
+                        <option value="yuv_stretch">PCA sobre YCbCr (BT.601)</option>
+                        <option value="dog">Diferencia de gaussianas (microrrelieve)</option>
+                        <option value="unsharp_mask">Máscara de enfoque (microtextura)</option>
                     </select>
                 </div>
 
-                <div class="control-group" id="roiControlGroup" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
-                    <label class="setting-label" style="color:var(--text-main);">🎯 Ajustar el cálculo de color a una zona</label>
-                    <p style="font-size: 0.72rem; color: var(--text-muted); margin: 0 0 6px 0; line-height: 1.3;">
-                        Dibuja un recuadro solo sobre la pintura para que el cálculo de color se ajuste a esa zona.
-                    </p>
-                    <div class="grid-2">
-                        <button id="roiSelectModeBtn" type="button" aria-pressed="false" style="padding:10px; font-size:0.8rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">🖊️ Dibujar selección</button>
-                        <button id="roiClearBtn" type="button" style="padding:10px; font-size:0.8rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">🗑️ Quitar selección</button>
+                <div class="slider-block">
+                    <div class="slider-block__head">
+                        <label class="field__label" id="labelIntensity" for="intensitySlider">Intensidad</label>
+                        <span class="slider-block__value" id="valIntensity">30 %</span>
                     </div>
-                    <div style="display:flex; align-items:center; gap:8px; margin-top:8px;">
-                        <input type="checkbox" id="useRoiCheck" disabled style="width:16px; height:16px;">
-                        <label for="useRoiCheck" style="font-size:0.78rem; color:var(--text-main);">Usar la selección para calcular los colores</label>
+                    <input class="range" type="range" id="intensitySlider" min="0" max="100" step="1" value="30">
+                    <p class="field__hint" id="pcaHelpText">Cuánto se amplifican las diferencias cromáticas encontradas.</p>
+                </div>
+
+                <hr class="divider">
+
+                <div class="field" id="roiControlGroup">
+                    <span class="field__label">Zona de cálculo</span>
+                    <p class="field__hint">Dibuja un recuadro sobre la pintura para ajustar el color a esa zona. Los píxeles quemados y los completamente negros se descartan solos.</p>
+                    <div class="btn-group">
+                        <button class="btn btn--sm" id="roiSelectModeBtn" type="button" aria-pressed="false">
+                            <svg class="icon" aria-hidden="true"><use href="#i-crop"/></svg>
+                            Dibujar
+                        </button>
+                        <button class="btn btn--sm" id="roiClearBtn" type="button">
+                            <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+                            Quitar
+                        </button>
                     </div>
-                </div>
-
-                <div class="control-group" style="margin-top: 6px;">
-                    <label class="setting-label" id="labelIntensity">Intensidad del estiramiento PCA</label>
-                    <input type="range" id="intensitySlider" min="5" max="250" value="70">
-                    <p id="pcaHelpText" style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0 0 0; line-height: 1.3;">
-                        Controla cuánto se amplifican las diferencias cromáticas obtenidas mediante PCA.
-                    </p>
-                </div>
-
-                <div class="control-group" style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px;">
-                    <label class="setting-label">Visualización y niveles estéticos</label>
-                    <div class="levels-sliders">
-                        <div class="level-row">
-                            <span>Punto negro:</span>
-                            <input type="range" id="sliderBlack" min="0" max="255" value="0">
-                            <span id="valBlack">0</span>
-                        </div>
-                        <div class="level-row">
-                            <span>Gamma / Gris:</span>
-                            <input type="range" id="sliderGamma" min="10" max="300" value="100">
-                            <span id="valGamma">1.00</span>
-                        </div>
-                        <div class="level-row">
-                            <span>Punto blanco:</span>
-                            <input type="range" id="sliderWhite" min="0" max="255" value="255">
-                            <span id="valWhite">255</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="controls-card" id="configLibraryCard">
-                <div class="pro-only">
-                    <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">2. Biblioteca de configuraciones</label>
-                    <div class="control-group" style="margin-bottom: 12px;">
-                        <div class="fav-row">
-                            <select id="favSelectPro">
-                                <option value="">-- Seleccionar guardado --</option>
-                            </select>
-                            <button id="deleteFavBtnPro" class="btn-danger" style="padding:12px; font-size:0.8rem;">🗑️ Borrar</button>
-                            <button id="saveFavBtn" style="padding:12px; background:#27272a; font-size:0.8rem; font-weight:600;">💾 Guardar actual</button>
-                        </div>
-                        <div class="grid-2" style="margin-top: 8px;">
-                            <button id="exportLibraryBtn" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">📤 Exportar biblioteca</button>
-                            <label for="importLibraryInput" style="background:#27272a; text-align:center; cursor:pointer; padding:10px; border-radius:8px; font-size:0.78rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center;">
-                                📥 Importar biblioteca
-                                <input type="file" id="importLibraryInput" accept=".json" class="hidden">
-                            </label>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="simple-only">
-                    <label class="setting-label" style="color:var(--text-main); margin-bottom:4px;">Transferencia y documentación</label>
-                </div>
-
-                <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
-                    <label class="setting-label" style="color:var(--accent);">📋 Código de configuración rápida (ASW1)</label>
-                    <textarea id="shareCodeField" rows="2" placeholder="Pegue aquí un código (ASW1:...)" style="width:100%; box-sizing:border-box; background:#101012; color:var(--text-main); border:1px solid var(--border); padding:6px; border-radius:6px;"></textarea>
-                    <div class="grid-2" style="margin-top: 4px;">
-                        <button id="btnGenerateCode" style="padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer;">Generar código</button>
-                        <button id="btnApplyCode" style="padding:10px; font-size:0.78rem; background:var(--accent); font-weight:600; color:#fff; border:none; border-radius:8px; cursor:pointer;">Aplicar código</button>
-                    </div>
-                    <button id="btnCopyCode" style="margin-top:4px; padding:10px; font-size:0.78rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:8px; cursor:pointer; width:100%;">📋 Copiar código</button>
-                </div>
-
-                <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px;">
-                    <label class="setting-label" style="color:var(--success);">📂 Cargar parámetros (.JSON)</label>
-                    <label for="importJsonInput" style="background:#1e1e20; text-align:center; cursor:pointer; padding:12px; border-radius:8px; font-size:0.82rem; font-weight:600; border:1px solid var(--border); margin:0; display:flex; align-items:center; justify-content:center; gap:8px;">
-                        📥 SELECCIONAR ARCHIVO CONFIG.JSON
-                        <input type="file" id="importJsonInput" accept=".json" class="hidden">
+                    <label class="check">
+                        <input type="checkbox" id="useRoiCheck" disabled>
+                        <span>Usar la zona para calcular el color</span>
                     </label>
                 </div>
-            </div>
 
-            <div class="controls-card pro-card" id="histogramUI" style="padding: 14px; margin: 0; border: 1px solid var(--border);">
-                <label class="setting-label" style="color:var(--text-main); margin-bottom:2px;">3. Análisis estadístico</label>
-                <canvas id="histogramCanvas"></canvas>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-family: monospace; font-size: 0.72rem; color: var(--text-muted); padding-top: 4px;">
-                    <div>Media: <span id="lblMean" style="color: var(--text-main); font-weight: 600;">-</span></div>
-                    <div>Desv. estándar: <span id="lblStd" style="color: var(--text-main); font-weight: 600;">-</span></div>
-                    <div>Valor mínimo: <span id="lblMin" style="color: var(--text-main); font-weight: 600;">-</span></div>
-                    <div>Valor máximo: <span id="lblMax" style="color: var(--text-main); font-weight: 600;">-</span></div>
+                <hr class="divider">
+
+                <div class="field">
+                    <span class="field__label">Niveles</span>
+                    <div class="slider-row">
+                        <span class="slider-row__label">Negros</span>
+                        <input class="range" type="range" id="sliderBlack" min="0" max="255" value="0" aria-label="Punto negro">
+                        <span class="slider-row__value" id="valBlack">0</span>
+                    </div>
+                    <div class="slider-row">
+                        <span class="slider-row__label">Gamma</span>
+                        <input class="range" type="range" id="sliderGamma" min="10" max="300" value="100" aria-label="Gamma">
+                        <span class="slider-row__value" id="valGamma">1.00</span>
+                    </div>
+                    <div class="slider-row">
+                        <span class="slider-row__label">Blancos</span>
+                        <input class="range" type="range" id="sliderWhite" min="0" max="255" value="255" aria-label="Punto blanco">
+                        <span class="slider-row__value" id="valWhite">255</span>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            <div id="exportZone" class="controls-card" style="padding: 14px; margin: 0; border: 1px solid var(--border); background: var(--bg-card); display: flex; flex-direction: column; gap: 8px;">
-                <div class="pro-only"><label class="setting-label" style="color:var(--text-main);">4. Exportación</label></div>
-                <div class="simple-only"><label class="setting-label" style="color:var(--text-main);">Exportación final de datos</label></div>
-                
-                <div class="control-group">
-                    <label class="setting-label" for="exportProjectName">Nombre del proyecto / exportación</label>
-                    <input type="text" id="exportProjectName" placeholder="Ej. Abrigo_Cueva_Pintura1">
+            <section class="panel pro-card" id="histogramUI">
+                <div class="panel__head">
+                    <span class="eyebrow">Luminancia</span>
+                </div>
+                <canvas class="histogram" id="histogramCanvas" role="img" aria-label="Histograma de luminancia de la imagen procesada"></canvas>
+                <div class="stats">
+                    <div class="stat"><span class="stat__key">MEDIA</span><span class="stat__val" id="lblMean">—</span></div>
+                    <div class="stat"><span class="stat__key">σ</span><span class="stat__val" id="lblStd">—</span></div>
+                    <div class="stat"><span class="stat__key">MÍN</span><span class="stat__val" id="lblMin">—</span></div>
+                    <div class="stat"><span class="stat__key">MÁX</span><span class="stat__val" id="lblMax">—</span></div>
+                </div>
+            </section>
+        </div>
+
+        <!-- ----- Columna B: salida y documentación ----- -->
+        <div class="panel-group" data-column="b">
+
+            <section class="panel" id="exportZone">
+                <div class="panel__head">
+                    <span class="eyebrow">Exportar</span>
                 </div>
 
-                <div id="advancedExportSelectors" class="grid-2">
-                    <div class="control-group">
-                        <label class="setting-label" for="exportFormatSelect">Modo de salida</label>
-                        <select id="exportFormatSelect" style="padding:8px; font-size:0.8rem;">
-                            <option value="processed">Imagen procesada completa</option>
-                            <option value="original">Imagen original de entrada</option>
-                            <option value="combined">Imagen procesada y original lado a lado</option>
+                <div class="field">
+                    <label class="field__label" for="exportProjectName">Nombre del proyecto</label>
+                    <input class="input" type="text" id="exportProjectName" placeholder="Abrigo del Ciervo, panel 1">
+                </div>
+
+                <div class="btn-group" id="advancedExportSelectors">
+                    <div class="field">
+                        <label class="field__label" for="exportFormatSelect">Contenido</label>
+                        <select class="select" id="exportFormatSelect">
+                            <option value="processed">Imagen procesada</option>
+                            <option value="original">Imagen original</option>
+                            <option value="combined">Comparativa lado a lado</option>
                         </select>
                     </div>
-                    <div class="control-group">
-                        <label class="setting-label" for="formatSelect">Formato de exportación</label>
-                        <select id="formatSelect" style="padding:8px; font-size:0.8rem;">
-                            <option value="image/png">Formato PNG (Sin pérdidas)</option>
-                            <option value="image/jpeg">Formato JPEG HD (98%)</option>
+                    <div class="field">
+                        <label class="field__label" for="formatSelect">Formato</label>
+                        <select class="select" id="formatSelect">
+                            <option value="image/png">PNG sin pérdidas</option>
+                            <option value="image/jpeg">JPEG al 98 %</option>
                         </select>
                     </div>
                 </div>
 
-                <div class="control-group" style="border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="checkbox" id="exportImgCheck" checked style="width:16px; height:16px;">
-                        <label for="exportImgCheck" style="font-size:0.78rem; color:var(--text-main);">Exportar archivo gráfico (.png / .jpg)</label>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <!-- Casilla de exportar JSON desactivada por defecto -->
-                        <input type="checkbox" id="exportJsonCheck" style="width:16px; height:16px;">
-                        <label for="exportJsonCheck" style="font-size:0.78rem; color:var(--text-main);">Exportar parámetros (.json)</label>
-                    </div>
-                </div>
-                
-                <div style="display:flex; align-items:center; gap:8px; margin: 2px 0; border-top: 1px dashed var(--border); padding-top: 8px;">
-                    <input type="checkbox" id="geoAuthCheck" style="width:18px; height:18px;">
-                    <label for="geoAuthCheck" style="font-size:0.75rem; color:var(--text-muted);">Incrustar metadatos georreferenciales (GPS)</label>
-                </div>
-                <div id="metadataDisplay" class="metadata-box hidden" aria-live="polite">Esperando coordenadas...</div>
-                <button id="btnCopyGPS" class="hidden" style="padding:8px; font-size:0.72rem; background:#27272a; font-weight:600; color:var(--text-main); border:1px solid var(--border); border-radius:6px; cursor:pointer;">📋 Copiar coordenadas</button>
+                <hr class="divider">
 
-                <div style="margin-top:4px; border-top:1px solid var(--border); padding-top:10px;">
-                    <button id="saveBtn" class="btn-success" style="font-size:0.82rem; padding:10px; width:100%;">💾 EXPORTAR ARCHIVOS</button>
-                </div>
-            </div>
+                <label class="check">
+                    <input type="checkbox" id="exportImgCheck" checked>
+                    <span>Imagen (.png o .jpg)</span>
+                </label>
+                <label class="check">
+                    <input type="checkbox" id="exportJsonCheck">
+                    <span>Parámetros de procesado (.json)</span>
+                </label>
+                <label class="check">
+                    <input type="checkbox" id="geoAuthCheck">
+                    <span>Coordenadas GPS, dentro del .json</span>
+                </label>
 
-            <div class="controls-card" style="border-left: 3px solid var(--success);">
-                <label class="setting-label" style="color:var(--text-main); margin-bottom: 4px;">🙏 Agradecimientos y créditos</label>
-                <p style="font-size: 0.75rem; color: var(--text-muted); margin: 0 0 8px 0; line-height: 1.4;">
-                    Los fundamentos metodológicos y los espacios de color están basados en las investigaciones de Jon Harman desarrolladas en DStretch®:
+                <div class="inline-row hidden" id="gpsPrecisionRow">
+                    <svg class="icon" aria-hidden="true"><use href="#i-pin"/></svg>
+                    <label for="gpsPrecision">Precisión</label>
+                    <select class="select" id="gpsPrecision">
+                        <option value="5">Exacta, ~1 m</option>
+                        <option value="3" selected>Reducida, ~100 m</option>
+                        <option value="2">Aproximada, ~1 km</option>
+                    </select>
+                </div>
+
+                <p class="note note--warn hidden" id="gpsPrivacyNote">
+                    La localización precisa de arte rupestre sin catalogar es información sensible
+                    frente al expolio. No publiques archivos con coordenadas exactas de yacimientos
+                    sin publicar.
                 </p>
-                <ul class="ack-list">
-                    <li><strong>Jon Harman, Ph.D.:</strong> Por ser el creador del algoritmo adaptado al arte rupestre.</li>
-                </ul>
-            </div>
 
-            <div class="telemetry-panel">
-                <div class="telemetry-row"><span>Estado de operación:</span><span id="telStatus" style="color:#22c55e;" aria-live="polite">Inicializando subsistemas...</span></div>
-                <div class="telemetry-row"><span>Resolución nativa:</span><span id="telResolution">-</span></div>
-                <div class="telemetry-row"><span>Tamaño en memoria:</span><span id="telSize">-</span></div>
-            </div>
+                <div class="code-box hidden" id="metadataDisplay" aria-live="polite">Sin coordenadas</div>
+
+                <button class="btn btn--sm hidden" id="btnCopyGPS" type="button">
+                    <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+                    Copiar coordenadas
+                </button>
+
+                <hr class="divider">
+
+                <button class="btn btn--confirm btn--block" id="saveBtn" type="button">
+                    <svg class="icon icon--lg" aria-hidden="true"><use href="#i-download"/></svg>
+                    Exportar
+                </button>
+            </section>
+
+            <section class="panel" id="configLibraryCard">
+                <div class="panel__head">
+                    <span class="eyebrow">Configuraciones</span>
+                </div>
+
+                <div class="pro-only">
+                    <div class="row">
+                        <select class="select" id="favSelectPro" aria-label="Configuraciones guardadas"></select>
+                        <button class="btn btn--danger btn--sm" id="deleteFavBtnPro" type="button" aria-label="Borrar la configuración seleccionada">
+                            <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>
+                        </button>
+                        <button class="btn btn--sm" id="saveFavBtn" type="button">
+                            <svg class="icon" aria-hidden="true"><use href="#i-save"/></svg>
+                            Guardar
+                        </button>
+                    </div>
+                    <div class="btn-group" style="margin-top:8px">
+                        <button class="btn btn--sm" id="exportLibraryBtn" type="button">
+                            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
+                            Exportar todas
+                        </button>
+                        <label class="btn btn--sm" for="importLibraryInput">
+                            <svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg>
+                            Importar
+                            <input type="file" id="importLibraryInput" accept=".json,application/json" class="visually-hidden-input">
+                        </label>
+                    </div>
+                    <hr class="divider">
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="shareCodeField">Código para compartir</label>
+                    <p class="field__hint">Copia estos ajustes exactos para pasárselos a otra persona o a otro dispositivo.</p>
+                    <textarea class="textarea" id="shareCodeField" rows="2" placeholder="ASW1:…"></textarea>
+                    <div class="btn-group">
+                        <button class="btn btn--sm" id="btnGenerateCode" type="button">Generar</button>
+                        <button class="btn btn--primary btn--sm" id="btnApplyCode" type="button">Aplicar</button>
+                    </div>
+                    <button class="btn btn--sm btn--block" id="btnCopyCode" type="button">
+                        <svg class="icon" aria-hidden="true"><use href="#i-copy"/></svg>
+                        Copiar código
+                    </button>
+                </div>
+
+                <hr class="divider">
+
+                <div class="field">
+                    <span class="field__label">Cargar parámetros desde un archivo</span>
+                    <label class="btn btn--sm btn--block" for="importJsonInput">
+                        <svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg>
+                        Abrir un .json de parámetros
+                        <input type="file" id="importJsonInput" accept=".json,application/json" class="visually-hidden-input">
+                    </label>
+                </div>
+            </section>
+
+            <section class="panel">
+                <div class="panel__head">
+                    <span class="eyebrow">Referencia</span>
+                </div>
+
+                <button class="btn btn--sm btn--block hidden" id="toggleManualBtn" type="button" aria-expanded="false" aria-controls="manualPanel">
+                    <svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>
+                    Cómo funciona cada algoritmo
+                </button>
+
+                <div class="hidden" id="manualPanel">
+                    <div class="panel__head">
+                        <span class="eyebrow">Manual técnico</span>
+                        <button class="btn--icon" id="closeManualBtn" type="button" aria-label="Cerrar el manual">
+                            <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+                        </button>
+                    </div>
+
+                    <div class="manual">
+                        <article class="manual__entry">
+                            <h4 class="manual__title">PCA sobre RGB</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>Calcula los autovectores de la matriz de covarianza en los canales RGB, descorrelaciona la información espectral y aplica un estiramiento lineal extremo.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Separa restos de óxido de hierro muy degradados del soporte calizo del abrigo.</p>
+                            <div class="manual__term">Límites</div>
+                            <p>Los colores resultantes son abstractos y no representan tonalidades reales. Amplifica también el ruido cromático.</p>
+                        </article>
+
+                        <article class="manual__entry">
+                            <h4 class="manual__title">PCA sobre YCbCr</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>Aísla la luminancia antes de procesar la varianza, que se calcula solo sobre las componentes de crominancia.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Distinguir trazos superpuestos, y trabajar en abrigos con iluminación solar muy irregular.</p>
+                        </article>
+
+                        <article class="manual__entry">
+                            <h4 class="manual__title">Diferencia de gaussianas</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>Filtro de paso de banda: resta dos versiones desenfocadas de la imagen con radios distintos.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Delimitar la forma de grabados someros, piqueteados e incisiones en microrrelieve.</p>
+                        </article>
+
+                        <article class="manual__entry">
+                            <h4 class="manual__title">Zona de cálculo e intensidad</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>La zona restringe el cálculo de medias y covarianza a un subconjunto de píxeles, descartando los quemados y los negros puros para que no sesguen la matriz.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Dibujar el recuadro solo sobre la pintura ajusta el realce a esos colores en vez de al conjunto de la roca. La intensidad va de 0 a 100 % y equivale a un rango distinto en cada algoritmo, para que el mando responda igual en todos.</p>
+                        </article>
+                    </div>
+                </div>
+
+                <hr class="divider">
+
+                <div class="field">
+                    <span class="field__label">Créditos</span>
+                    <p class="field__hint">El método y los espacios de color provienen de la investigación de Jon Harman en DStretch®.</p>
+                    <ul class="credits">
+                        <li><strong>Jon Harman, Ph.D.</strong> — autor de la adaptación del estiramiento por descorrelación al arte rupestre.</li>
+                    </ul>
+                </div>
+            </section>
         </div>
     </div>
+</div>
 
-    <!-- Barra de Pantalla Limpia Móvil -->
-    <div class="clean-bar" id="cleanBar">
-        <div class="clean-presets-scroll" id="cleanPresetsScroll"></div>
-        <div class="clean-actions-row">
-            <button id="cleanHoldViewBtn" style="background:#27272a; color:#fff; border:1px solid var(--border);">👁️ ORIGINAL</button>
-            <label for="uploadInputClean" style="background:#1e1e20; color:#fff; border:1px solid var(--border); cursor:pointer; display:flex; align-items:center; justify-content:center;">📂 CARGAR
-                <input type="file" id="uploadInputClean" accept="image/*" class="hidden">
-            </label>
-            <button id="cleanExportBtn" class="btn-success">💾 EXPORTAR</button>
-            <button id="restoreScreenBtn" class="btn-danger">⚙️ MÁS AJUSTES</button>
-        </div>
+<!-- ========================= BARRA DE CAMPO ========================= -->
+<div class="fieldbar" id="cleanBar">
+    <div class="fieldbar__strip" id="cleanPresetsScroll"></div>
+    <div class="fieldbar__actions">
+        <button class="btn btn--sm" id="cleanHoldViewBtn" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-eye"/></svg>
+            Original
+        </button>
+        <label class="btn btn--sm" for="uploadInputClean">
+            <svg class="icon" aria-hidden="true"><use href="#i-image"/></svg>
+            Abrir
+            <input type="file" id="uploadInputClean" accept="image/*" class="visually-hidden-input">
+        </label>
+        <button class="btn btn--confirm btn--sm" id="cleanExportBtn" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
+            Exportar
+        </button>
+        <button class="btn btn--sm" id="restoreScreenBtn" type="button">
+            <svg class="icon" aria-hidden="true"><use href="#i-sliders"/></svg>
+            Ajustes
+        </button>
     </div>
+</div>
 
-    <script>
-        const APP_VERSION = "0.2";
-
-        const ImageLoader = {
-            async processUploadedFile(file) {
-                if (!file || file.size === 0) throw new Error("Archivo vacío detectado.");
-                const telemetry = { size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`, status: "Procesando...", isRaw: false };
-                const buffer = await file.arrayBuffer();
-                const view = new DataView(buffer);
-
-                if (view.byteLength > 4 && ((view.getUint16(0) === 0x4949) || (view.getUint16(0) === 0x4D4D))) {
-                    telemetry.isRaw = true;
-                    throw new Error("Formato RAW/DNG nativo detectado.");
-                }
-
-                const blob = new Blob([buffer]);
-                const bitmap = await createImageBitmap(blob);
-                return { bitmap, telemetry };
-            }
-        };
-
-        const WebGL2Pipeline = {
-            gl: null, program: null, texture: null, vao: null,
-            uniforms: {}, 
-            lastTextureSource: null, 
-
-            vertexShaderSource: `#version 300 es
-                in vec2 position; out vec2 vTexCoord;
-                void main() {
-                    vTexCoord = position * 0.5 + 0.5;
-                    vTexCoord.y = 1.0 - vTexCoord.y;
-                    gl_Position = vec4(position, 0.0, 1.0);
-                }`,
-
-            fragmentShaderSource: `#version 300 es
-                precision highp float;
-                in vec2 vTexCoord; out vec4 fragColor;
-                uniform sampler2D uTexture; uniform vec2 uResolution;
-                uniform int uFilterMode; uniform vec3 uLevels; uniform float uFilterAmount;
-
-                vec3 applyLevels(vec3 color) {
-                    float range = max(uLevels.z - uLevels.x, 1e-5);
-                    vec3 outputColor = clamp((color - uLevels.x) / range, 0.0, 1.0);
-                    return pow(outputColor, vec3(1.0 / uLevels.y)); 
-                }
-
-                vec3 getGaussianBlur(vec2 coord, float radiusScale) {
-                    vec2 texelSize = vec2(1.0) / uResolution;
-                    vec3 accum = vec3(0.0); float totalWeight = 0.0;
-                    float kernel[5] = float[](0.0625, 0.25, 0.375, 0.25, 0.0625);
-                    for (int i = -2; i <= 2; i++) {
-                        for (int j = -2; j <= 2; j++) {
-                            vec2 offset = vec2(float(i), float(j)) * texelSize * radiusScale;
-                            float weight = kernel[i + 2] * kernel[j + 2];
-                            accum += texture(uTexture, coord + offset).rgb * weight;
-                            totalWeight += weight;
-                        }
-                    }
-                    return accum / totalWeight;
-                }
-
-                void main() {
-                    vec3 baseColor = texture(uTexture, vTexCoord).rgb;
-                    vec3 finalColor = baseColor;
-                    if (uFilterMode == 1) {
-                        vec3 blurFine = getGaussianBlur(vTexCoord, 1.2);
-                        vec3 blurCoarse = getGaussianBlur(vTexCoord, 4.0);
-                        float lumaFine = dot(blurFine, vec3(0.299, 0.587, 0.114));
-                        float lumaCoarse = dot(blurCoarse, vec3(0.299, 0.587, 0.114));
-                        finalColor = vec3((lumaFine - lumaCoarse) * uFilterAmount + 0.5);
-                    } else if (uFilterMode == 2) {
-                        vec3 blurred = getGaussianBlur(vTexCoord, 1.8);
-                        finalColor = baseColor + ((baseColor - blurred) * uFilterAmount);
-                    }
-                    fragColor = vec4(applyLevels(finalColor), 1.0);
-                }`,
-
-            init(canvasElement) {
-                this.gl = canvasElement.getContext('webgl2', { alpha: false, antialias: false, powerPreference: "high-performance" });
-                if (!this.gl) throw new Error("WebGL2 no disponible.");
-                
-                const gl = this.gl;
-                const vs = this.compileShader(gl.VERTEX_SHADER, this.vertexShaderSource);
-                const fs = this.compileShader(gl.FRAGMENT_SHADER, this.fragmentShaderSource);
-                
-                this.program = gl.createProgram();
-                gl.attachShader(this.program, vs); 
-                gl.attachShader(this.program, fs);
-                gl.linkProgram(this.program);
-
-                const uniformKeys = ["uResolution", "uFilterMode", "uLevels", "uFilterAmount"];
-                uniformKeys.forEach(key => {
-                    this.uniforms[key] = gl.getUniformLocation(this.program, key);
-                });
-
-                const vertices = new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]);
-                const buffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-                gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
-                
-                this.vao = gl.createVertexArray(); 
-                gl.bindVertexArray(this.vao);
-                const posAttr = gl.getAttribLocation(this.program, "position");
-                gl.enableVertexAttribArray(posAttr);
-                gl.vertexAttribPointer(posAttr, 2, gl.FLOAT, false, 0, 0);
-                
-                this.texture = gl.createTexture();
-                this.lastTextureSource = null;
-            },
-
-            compileShader(type, source) {
-                const gl = this.gl; 
-                const shader = gl.createShader(type);
-                gl.shaderSource(shader, source); 
-                gl.compileShader(shader);
-                return shader;
-            },
-
-            render(imageData, filterMode, levels, filterAmount) {
-                if (!imageData || imageData.width === 0 || imageData.height === 0) return;
-                const gl = this.gl;
-                gl.viewport(0, 0, imageData.width, imageData.height);
-                gl.useProgram(this.program);
-                gl.activeTexture(gl.TEXTURE0); 
-                gl.bindTexture(gl.TEXTURE_2D, this.texture);
-                
-                if (this.lastTextureSource !== imageData) {
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, imageData.width, imageData.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageData.data);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                    this.lastTextureSource = imageData;
-                }
-
-                gl.uniform2f(this.uniforms["uResolution"], imageData.width, imageData.height);
-                gl.uniform1i(this.uniforms["uFilterMode"], filterMode);
-                gl.uniform3f(this.uniforms["uLevels"], levels.black / 255.0, levels.gamma, levels.white / 255.0);
-                gl.uniform1f(this.uniforms["uFilterAmount"], filterAmount);
-                
-                gl.bindVertexArray(this.vao); 
-                gl.drawArrays(gl.TRIANGLES, 0, 6);
-            }
-        };
-
-        const ResizerController = {
-            init() {
-                this.initHorizontalSplitter();
-                this.initVerticalSplitter();
-            },
-
-            initHorizontalSplitter() {
-                const resizer = document.getElementById('resizer');
-                const container = document.getElementById('mainContainer');
-                if (!resizer || !container) return;
-
-                let isDragging = false;
-
-                const startDrag = () => {
-                    if (window.innerWidth < 1100) return;
-                    isDragging = true;
-                    resizer.classList.add('dragging');
-                    document.body.style.cursor = 'col-resize';
-                    document.body.style.userSelect = 'none';
-                };
-
-                const doDrag = (e) => {
-                    if (!isDragging) return;
-                    const containerRect = container.getBoundingClientRect();
-                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-                    if (!clientX) return;
-
-                    let newLeftWidth = clientX - containerRect.left;
-                    let percentage = (newLeftWidth / containerRect.width) * 100;
-
-                    percentage = Math.max(25, Math.min(75, percentage));
-                    document.documentElement.style.setProperty('--left-width', `${percentage}%`);
-                };
-
-                const stopDrag = () => {
-                    if (!isDragging) return;
-                    isDragging = false;
-                    resizer.classList.remove('dragging');
-                    document.body.style.cursor = '';
-                    document.body.style.userSelect = '';
-                    if (UIController && UIController.requestWebGLRender) {
-                        UIController.requestWebGLRender();
-                    }
-                };
-
-                resizer.addEventListener('mousedown', startDrag);
-                window.addEventListener('mousemove', doDrag);
-                window.addEventListener('mouseup', stopDrag);
-                resizer.addEventListener('touchstart', startDrag, { passive: true });
-                window.addEventListener('touchmove', doDrag, { passive: true });
-                window.addEventListener('touchend', stopDrag);
-            },
-
-            initVerticalSplitter() {
-                const resizerV = document.getElementById('resizerV');
-                const viewerCard = document.getElementById('viewerCard');
-                if (!resizerV || !viewerCard) return;
-
-                let isDragging = false;
-                let startY = 0;
-                let startHeight = 0;
-
-                const startDrag = (e) => {
-                    if (window.innerWidth >= 1100) return;
-                    isDragging = true;
-                    resizerV.classList.add('dragging');
-                    startY = e.clientY || (e.touches && e.touches[0].clientY);
-                    startHeight = viewerCard.getBoundingClientRect().height;
-                    document.body.style.userSelect = 'none';
-                };
-
-                const doDrag = (e) => {
-                    if (!isDragging) return;
-                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-                    if (!clientY) return;
-
-                    const deltaY = clientY - startY;
-                    let newHeight = startHeight + deltaY;
-
-                    const maxHeight = window.innerHeight * 0.75;
-                    newHeight = Math.max(120, Math.min(maxHeight, newHeight));
-
-                    viewerCard.style.height = `${newHeight}px`;
-                    viewerCard.style.maxHeight = `${newHeight}px`;
-                    viewerCard.style.aspectRatio = 'auto';
-                };
-
-                const stopDrag = () => {
-                    if (!isDragging) return;
-                    isDragging = false;
-                    resizerV.classList.remove('dragging');
-                    document.body.style.userSelect = '';
-                    if (UIController && UIController.requestWebGLRender) {
-                        UIController.requestWebGLRender();
-                    }
-                };
-
-                resizerV.addEventListener('mousedown', startDrag);
-                window.addEventListener('mousemove', doDrag);
-                window.addEventListener('mouseup', stopDrag);
-                resizerV.addEventListener('touchstart', startDrag, { passive: true });
-                window.addEventListener('touchmove', doDrag, { passive: true });
-                window.addEventListener('touchend', stopDrag);
-            }
-        };
-
-        const CameraController = {
-            stream: null,
-            async init() {
-                try {
-                    this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } });
-                    document.getElementById('videoPreview').srcObject = this.stream;
-                } catch (err) { 
-                    UIController.updateStatus("Sensor de cámara inaccesible.", "#a1a1aa"); 
-                }
-            }
-        };
-
-        const HistogramController = {
-            draw(imageData) {
-                if (!imageData || imageData.width === 0 || imageData.height === 0) return;
-                const canvas = document.getElementById('histogramCanvas'); 
-                const ctx = canvas.getContext('2d');
-                const w = canvas.width = canvas.clientWidth; 
-                const h = canvas.height = 100;
-                const data = imageData.data; 
-                const len = data.length;
-                let hist = new Int32Array(256);
-
-                let minLuma = 255, maxLuma = 0, sumLuma = 0, sumSqLuma = 0;
-                const pixelCount = len / 4;
-
-                for (let i = 0; i < len; i += 4) {
-                    let luma = (data[i] * 299 + data[i + 1] * 587 + data[i + 2] * 114) / 1000;
-                    let rLuma = Math.min(255, Math.max(0, Math.round(luma)));
-                    hist[rLuma]++;
-                    if (luma < minLuma) minLuma = luma;
-                    if (luma > maxLuma) maxLuma = luma;
-                    sumLuma += luma;
-                    sumSqLuma += luma * luma;
-                }
-
-                const mean = sumLuma / pixelCount;
-                const variance = (sumSqLuma / pixelCount) - (mean * mean);
-                const stdDev = Math.sqrt(Math.max(0, variance));
-
-                document.getElementById('lblMean').innerText = mean.toFixed(1);
-                document.getElementById('lblStd').innerText = stdDev.toFixed(1);
-                document.getElementById('lblMin').innerText = Math.round(minLuma);
-                document.getElementById('lblMax').innerText = Math.round(maxLuma);
-
-                let maxVal = 0;
-                for (let i = 1; i < 255; i++) { if (hist[i] > maxVal) maxVal = hist[i]; }
-                if (maxVal === 0) maxVal = 1;
-
-                ctx.clearRect(0, 0, w, h); 
-                ctx.fillStyle = "rgba(37, 99, 235, 0.5)";
-                const binWidth = w / 256;
-                for (let i = 0; i < 256; i++) {
-                    const binHeight = (hist[i] / maxVal) * h;
-                    ctx.fillRect(i * binWidth, h - binHeight, binWidth, binHeight);
-                }
-            }
-        };
-
-        const FavoritesManager = {
-            favorites: {},
-            load() {
-                const stored = localStorage.getItem('arqueostretch_favs');
-                if (stored) {
-                    try { this.favorites = JSON.parse(stored); } catch(e) { this.favorites = {}; }
-                    this.updateDropdowns();
-                }
-            },
-            saveActive() {
-                const name = prompt("Asigna un nombre a esta configuración:");
-                if (!name) return;
-                this.favorites[name] = {
-                    filter: document.getElementById('filterSelect').value,
-                    intensity: document.getElementById('intensitySlider').value,
-                    black: document.getElementById('sliderBlack').value,
-                    gamma: document.getElementById('sliderGamma').value,
-                    white: document.getElementById('sliderWhite').value
-                };
-                localStorage.setItem('arqueostretch_favs', JSON.stringify(this.favorites));
-                this.updateDropdowns();
-            },
-            deleteSelected(selectId) {
-                const selectEl = document.getElementById(selectId);
-                const name = selectEl.value;
-                if (!name) return;
-                if (confirm(`¿Eliminar preset "${name}"?`)) {
-                    delete this.favorites[name];
-                    localStorage.setItem('arqueostretch_favs', JSON.stringify(this.favorites));
-                    this.updateDropdowns();
-                }
-            },
-            exportLibrary() {
-                const names = Object.keys(this.favorites);
-                if (names.length === 0) return;
-                const payload = { "software": "ArqueoStretch", "version": APP_VERSION, "favorites": this.favorites };
-                const blob = new Blob([JSON.stringify(payload, null, 4)], { type: "application/json" });
-                const link = document.createElement('a');
-                link.download = "arqueostretch_biblioteca.json";
-                link.href = URL.createObjectURL(blob);
-                link.click();
-            },
-            async importLibrary(file) {
-                if (!file) return;
-                try {
-                    const text = await file.text();
-                    const data = JSON.parse(text);
-                    const incoming = data.favorites || data;
-                    this.favorites = { ...this.favorites, ...incoming };
-                    localStorage.setItem('arqueostretch_favs', JSON.stringify(this.favorites));
-                    this.updateDropdowns();
-                } catch (err) { alert("Error importando biblioteca."); }
-            },
-            updateDropdowns() {
-                const selectSimple = document.getElementById('favSelectSimple');
-                const selectPro = document.getElementById('favSelectPro');
-                const template = '<option value="">-- Usar configuración guardada --</option>';
-                selectSimple.innerHTML = template;
-                if (selectPro) selectPro.innerHTML = template;
-
-                Object.keys(this.favorites).forEach(name => {
-                    const optSimple = document.createElement('option');
-                    optSimple.value = name; optSimple.innerText = name;
-                    selectSimple.appendChild(optSimple);
-
-                    if (selectPro) {
-                        const optPro = document.createElement('option');
-                        optPro.value = name; optPro.innerText = name;
-                        selectPro.appendChild(optPro);
-                    }
-                });
-            },
-            loadConfig(name) {
-                const config = this.favorites[name];
-                if (!config) return;
-                document.getElementById('filterSelect').value = config.filter;
-                UIController.currentAlgMode = config.filter;
-                document.getElementById('intensitySlider').value = config.intensity;
-                document.getElementById('sliderBlack').value = config.black;
-                document.getElementById('sliderGamma').value = config.gamma;
-                document.getElementById('sliderWhite').value = config.white;
-                UIController.updateLevelLabels();
-                UIController.dispatchProcessing();
-            }
-        };
-
-        const ZoomController = {
-            scale: 1, translateX: 0, translateY: 0, minScale: 1, maxScale: 8, isPanning: false,
-            startPoint: { x: 0, y: 0 },
-            initialPinchDist: 0, initialScale: 1, isPinching: false,
-
-            init() {
-                this.card = document.getElementById('viewerCard');
-                this.inner = document.getElementById('viewportInner');
-                this.lbl = document.getElementById('zoomLevelLabel');
-
-                document.getElementById('zoomInBtn').addEventListener('click', () => this.zoomAtCenter(1.3));
-                document.getElementById('zoomOutBtn').addEventListener('click', () => this.zoomAtCenter(1 / 1.3));
-                document.getElementById('zoomResetBtn').addEventListener('click', () => this.reset());
-
-                this.card.addEventListener('wheel', (e) => {
-                    e.preventDefault();
-                    const factor = e.deltaY < 0 ? 1.15 : (1 / 1.15);
-                    this.zoomAtPoint(factor, e.clientX, e.clientY);
-                }, { passive: false });
-
-                this.card.addEventListener('mousedown', (e) => this.onStart(e.clientX, e.clientY));
-                window.addEventListener('mousemove', (e) => this.onMove(e.clientX, e.clientY));
-                window.addEventListener('mouseup', () => this.onEnd());
-
-                this.card.addEventListener('touchstart', (e) => {
-                    if (e.touches.length === 2) {
-                        e.preventDefault();
-                        this.isPinching = true;
-                        this.isPanning = false;
-                        this.initialPinchDist = Math.hypot(
-                            e.touches[0].clientX - e.touches[1].clientX,
-                            e.touches[0].clientY - e.touches[1].clientY
-                        );
-                        this.initialScale = this.scale;
-                    } else if (e.touches.length === 1) {
-                        if (this.scale > 1 && !(typeof RoiSelector !== 'undefined' && RoiSelector.drawMode)) {
-                            e.preventDefault();
-                        }
-                        this.onStart(e.touches[0].clientX, e.touches[0].clientY);
-                    }
-                }, { passive: false });
-
-                this.card.addEventListener('touchmove', (e) => {
-                    if (this.isPinching && e.touches.length === 2) {
-                        e.preventDefault();
-                        const currentDist = Math.hypot(
-                            e.touches[0].clientX - e.touches[1].clientX,
-                            e.touches[0].clientY - e.touches[1].clientY
-                        );
-                        if (this.initialPinchDist > 0) {
-                            const factor = currentDist / this.initialPinchDist;
-                            const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                            const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                            this.zoomAtPointWithBaseScale(this.initialScale * factor, centerX, centerY);
-                        }
-                    } else if (this.isPanning && e.touches.length === 1) {
-                        e.preventDefault();
-                        this.onMove(e.touches[0].clientX, e.touches[0].clientY);
-                    }
-                }, { passive: false });
-
-                this.card.addEventListener('touchend', (e) => {
-                    if (e.touches.length < 2) this.isPinching = false;
-                    if (e.touches.length === 0) this.onEnd();
-                });
-            },
-
-            onStart(clientX, clientY) {
-                if (RoiSelector && RoiSelector.drawMode) return;
-                if (this.scale <= 1) return;
-                this.isPanning = true;
-                this.startPoint = { x: clientY - this.translateY, xX: clientX - this.translateX };
-            },
-
-            onMove(clientX, clientY) {
-                if (!this.isPanning) return;
-                this.translateX = clientX - this.startPoint.xX;
-                this.translateY = clientY - this.startPoint.x;
-                this.clampTranslate();
-                this.applyTransform();
-            },
-
-            onEnd() { this.isPanning = false; },
-
-            zoomAtCenter(factor) {
-                const rect = this.card.getBoundingClientRect();
-                this.zoomAtPoint(factor, rect.left + rect.width / 2, rect.top + rect.height / 2);
-            },
-
-            zoomAtPoint(factor, clientX, clientY) {
-                if (typeof RoiSelector !== 'undefined' && RoiSelector.drawMode) return;
-                const targetScale = this.scale * factor;
-                this.zoomAtPointWithBaseScale(targetScale, clientX, clientY);
-            },
-
-            zoomAtPointWithBaseScale(targetScale, clientX, clientY) {
-                const rect = this.card.getBoundingClientRect();
-                const mouseX = clientX - rect.left;
-                const mouseY = clientY - rect.top;
-                const oldScale = this.scale;
-                let newScale = Math.max(this.minScale, Math.min(this.maxScale, targetScale));
-
-                if (newScale === oldScale) return;
-                this.translateX = mouseX - (mouseX - this.translateX) * (newScale / oldScale);
-                this.translateY = mouseY - (mouseY - this.translateY) * (newScale / oldScale);
-                this.scale = newScale;
-                if (this.scale === 1) { this.translateX = 0; this.translateY = 0; }
-                this.clampTranslate();
-                this.applyTransform();
-            },
-
-            clampTranslate() {
-                const rect = this.card.getBoundingClientRect();
-                const minX = rect.width * (1 - this.scale);
-                const minY = rect.height * (1 - this.scale);
-                this.translateX = Math.min(0, Math.max(minX, this.translateX));
-                this.translateY = Math.min(0, Math.max(minY, this.translateY));
-            },
-
-            reset() {
-                this.scale = 1; this.translateX = 0; this.translateY = 0;
-                this.applyTransform();
-            },
-
-            applyTransform() {
-                this.inner.style.transform = `translate(${this.translateX}px, ${this.translateY}px) scale(${this.scale})`;
-                this.lbl.innerText = `${Math.round(this.scale * 100)}%`;
-            }
-        };
-
-        const RoiSelector = {
-            drawMode: false, dragging: false, startContainerPoint: null, roi: null,
-            init() {
-                this.card = document.getElementById('viewerCard');
-                this.overlay = document.getElementById('roiOverlay');
-                this.modeBtn = document.getElementById('roiSelectModeBtn');
-                this.clearBtn = document.getElementById('roiClearBtn');
-                this.useCheck = document.getElementById('useRoiCheck');
-
-                this.modeBtn.addEventListener('click', () => this.toggleDrawMode());
-                this.clearBtn.addEventListener('click', () => this.clear());
-                this.useCheck.addEventListener('change', () => UIController.dispatchProcessing());
-
-                this.card.addEventListener('mousedown', (e) => this.onDown(e));
-                this.card.addEventListener('mousemove', (e) => this.onMove(e));
-                window.addEventListener('mouseup', (e) => this.onUp(e));
-                this.card.addEventListener('touchstart', (e) => this.onDown(e), { passive: false });
-                this.card.addEventListener('touchmove', (e) => this.onMove(e), { passive: false });
-                this.card.addEventListener('touchend', (e) => this.onUp(e), { passive: false });
-            },
-
-            toggleDrawMode() {
-                if (ZoomController) ZoomController.reset();
-                this.drawMode = !this.drawMode;
-                this.modeBtn.setAttribute('aria-pressed', String(this.drawMode));
-                this.modeBtn.style.background = this.drawMode ? 'var(--accent)' : '#27272a';
-            },
-
-            clear() {
-                this.roi = null;
-                this.overlay.classList.add('hidden');
-                this.useCheck.checked = false;
-                this.useCheck.disabled = true;
-                UIController.dispatchProcessing();
-            },
-
-            getActiveRoi() {
-                return (this.useCheck && this.useCheck.checked && this.roi) ? this.roi : null;
-            },
-
-            getImageElement() {
-                const canvas = document.getElementById('canvasView');
-                return canvas.classList.contains('hidden') ? document.getElementById('videoPreview') : canvas;
-            },
-
-            containerPoint(evt) {
-                const rect = this.card.getBoundingClientRect();
-                const point = (evt.touches && evt.touches[0]) || (evt.changedTouches && evt.changedTouches[0]) || evt;
-                return { x: point.clientX - rect.left, y: point.clientY - rect.top, rect };
-            },
-
-            toImageCoords(containerX, containerY, rect) {
-                const el = this.getImageElement();
-                const imgW = el.videoWidth || el.width;
-                const imgH = el.videoHeight || el.height;
-                if (!imgW || !imgH) return null;
-
-                const boxW = rect.width, boxH = rect.height;
-                const imgRatio = imgW / imgH, boxRatio = boxW / boxH;
-                let renderW, renderH, offsetX, offsetY;
-                if (imgRatio > boxRatio) {
-                    renderW = boxW; renderH = boxW / imgRatio; offsetX = 0; offsetY = (boxH - renderH) / 2;
-                } else {
-                    renderH = boxH; renderW = boxH * imgRatio; offsetY = 0; offsetX = (boxW - renderW) / 2;
-                }
-                const x = (containerX - offsetX) / renderW * imgW;
-                const y = (containerY - offsetY) / renderH * imgH;
-                return { x: Math.max(0, Math.min(imgW, x)), y: Math.max(0, Math.min(imgH, y)) };
-            },
-
-            onDown(evt) {
-                if (!this.drawMode || !UIController.currentOriginalData) return;
-                evt.preventDefault();
-                this.dragging = true;
-                this.startContainerPoint = this.containerPoint(evt);
-                this.overlay.classList.remove('hidden');
-                this.overlay.style.left = this.startContainerPoint.x + 'px';
-                this.overlay.style.top = this.startContainerPoint.y + 'px';
-                this.overlay.style.width = '0px';
-                this.overlay.style.height = '0px';
-            },
-
-            onMove(evt) {
-                if (!this.dragging) return;
-                evt.preventDefault();
-                const p = this.containerPoint(evt);
-                const x0 = Math.min(this.startContainerPoint.x, p.x);
-                const y0 = Math.min(this.startContainerPoint.y, p.y);
-                this.overlay.style.left = x0 + 'px';
-                this.overlay.style.top = y0 + 'px';
-                this.overlay.style.width = Math.abs(p.x - this.startContainerPoint.x) + 'px';
-                this.overlay.style.height = Math.abs(p.y - this.startContainerPoint.y) + 'px';
-            },
-
-            onUp(evt) {
-                if (!this.dragging) return;
-                this.dragging = false;
-                const p = this.containerPoint(evt);
-                const rect = p.rect;
-
-                const c0 = this.toImageCoords(Math.min(this.startContainerPoint.x, p.x), Math.min(this.startContainerPoint.y, p.y), rect);
-                const c1 = this.toImageCoords(Math.max(this.startContainerPoint.x, p.x), Math.max(this.startContainerPoint.y, p.y), rect);
-                if (!c0 || !c1) { this.overlay.classList.add('hidden'); return; }
-
-                const roiW = c1.x - c0.x, roiH = c1.y - c0.y;
-                if (roiW < 15 || roiH < 15) { this.overlay.classList.add('hidden'); return; }
-
-                this.roi = { x: Math.round(c0.x), y: Math.round(c0.y), w: Math.round(roiW), h: Math.round(roiH) };
-                this.useCheck.disabled = false;
-                this.useCheck.checked = true;
-                this.drawMode = false;
-                this.modeBtn.setAttribute('aria-pressed', 'false');
-                this.modeBtn.style.background = '#27272a';
-                UIController.dispatchProcessing();
-            }
-        };
-
-        const GPSManager = {
-            telemetry: null,
-            requestLocation() {
-                if (!navigator.geolocation) return;
-                navigator.geolocation.getCurrentPosition((position) => {
-                    this.telemetry = { lat: position.coords.latitude, lon: position.coords.longitude };
-                    document.getElementById('metadataDisplay').innerText = `GPS: LAT ${this.telemetry.lat.toFixed(5)}, LON ${this.telemetry.lon.toFixed(5)}`;
-                });
-            }
-        };
-
-        const ProcessingController = {
-            worker: null, imageVersion: 0,
-            init() {
-                if (this.worker) this.worker.terminate();
-                this.worker = new Worker('worker.js');
-                this.worker.onmessage = (e) => this.handleResponse(e);
-            },
-            dispatch(originalData, filterValue, targetStd, roi) {
-                if (!originalData) return;
-
-                if (filterValue === 'dog' || filterValue === 'unsharp_mask') {
-                    UIController.currentProcessedData = originalData;
-                    UIController.requestWebGLRender(); 
-                    if (UIController.isLabMode) HistogramController.draw(UIController.currentProcessedData); 
-                    return;
-                }
-
-                UIController.updateStatus("Computando matriz...", "#2563eb");
-                const bufferCopy = new Uint8ClampedArray(originalData.data.length);
-                bufferCopy.set(originalData.data);
-                
-                this.worker.postMessage({
-                    imgData: { width: originalData.width, height: originalData.height, data: bufferCopy },
-                    filter: filterValue, targetStd: targetStd, version: this.imageVersion,
-                    roi: roi || null
-                }, [bufferCopy.buffer]);
-            },
-            handleResponse(e) {
-                if (e.data.version !== this.imageVersion) return; 
-                const w = UIController.currentOriginalData.width; 
-                const h = UIController.currentOriginalData.height;
-                
-                UIController.currentProcessedData = new ImageData(e.data.dstUint8, w, h);
-                UIController.updateStatus("Análisis completado.", "#22c55e");
-                
-                if (UIController.isHoldingOriginal) return; 
-                UIController.requestWebGLRender(); 
-                if (UIController.isLabMode) HistogramController.draw(UIController.currentProcessedData);
-            }
-        };
-
-        const ExportManager = {
-            getFileName(extension) {
-                let baseName = document.getElementById('exportProjectName').value.trim();
-                if (!baseName) {
-                    const now = new Date();
-                    const pad = num => String(num).padStart(2, '0');
-                    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}`;
-                    const activeAlg = (UIController.isLabMode ? document.getElementById('filterSelect').value : UIController.currentAlgMode).toUpperCase();
-                    baseName = `${dateStr}_${activeAlg}`;
-                }
-                return baseName.replace(/[^a-zA-Z0-9_\-]/g, '_') + '.' + extension;
-            },
-
-            exportDocument() {
-                if (!UIController.currentOriginalData || !UIController.currentProcessedData) {
-                    UIController.updateStatus("Sin datos cargados.", "#ef4444"); return;
-                }
-                const exportMode = document.getElementById('exportFormatSelect').value;
-                const mimeType = document.getElementById('formatSelect').value;
-                const extension = mimeType === 'image/jpeg' ? 'jpg' : 'png';
-                const quality = mimeType === 'image/jpeg' ? 0.98 : 1.0;
-                const w = UIController.currentOriginalData.width;
-                const h = UIController.currentOriginalData.height;
-                const outCanvas = document.createElement('canvas'); const oCtx = outCanvas.getContext('2d');
-                UIController.requestWebGLRender();
-                const glCanvas = document.getElementById('canvasView');
-
-                if (exportMode === 'processed') {
-                    outCanvas.width = w; outCanvas.height = h; oCtx.drawImage(glCanvas, 0, 0, w, h);
-                } else if (exportMode === 'original') {
-                    outCanvas.width = w; outCanvas.height = h; oCtx.putImageData(UIController.currentOriginalData, 0, 0);
-                } else if (exportMode === 'combined') {
-                    outCanvas.width = w * 2; outCanvas.height = h;
-                    const tempCanvasOrig = document.createElement('canvas'); tempCanvasOrig.width = w; tempCanvasOrig.height = h;
-                    tempCanvasOrig.getContext('2d').putImageData(UIController.currentOriginalData, 0, 0);
-                    oCtx.drawImage(tempCanvasOrig, 0, 0, w, h); oCtx.drawImage(glCanvas, w, 0, w, h);
-                }
-
-                if (document.getElementById('exportImgCheck').checked) {
-                    const link = document.createElement('a');
-                    link.download = this.getFileName(extension);
-                    link.href = outCanvas.toDataURL(mimeType, quality); 
-                    link.click();
-                }
-
-                if (document.getElementById('exportJsonCheck').checked) {
-                    const activeAlg = UIController.isLabMode ? document.getElementById('filterSelect').value : UIController.currentAlgMode;
-                    const jsonMetadata = {
-                        "software": "ArqueoStretch", "version": APP_VERSION,
-                        "processing": {
-                            "algorithm": activeAlg,
-                            "targetStd": parseFloat(document.getElementById('intensitySlider').value),
-                            "levels": {
-                                "black": parseFloat(document.getElementById('sliderBlack').value),
-                                "gamma": parseFloat(document.getElementById('sliderGamma').value),
-                                "white": parseFloat(document.getElementById('sliderWhite').value)
-                            }
-                        },
-                        "date": new Date().toISOString()
-                    };
-
-                    // Documenta qué zona de la imagen se usó para calcular los colores (si el usuario
-                    // usó la selección de área), para que el resultado sea reproducible.
-                    const activeRoi = RoiSelector.getActiveRoi();
-                    if (activeRoi) {
-                        jsonMetadata.processing.regionOfInterest = activeRoi;
-                    }
-
-                    // Incrusta las coordenadas GPS si el usuario activó la casilla y ya se obtuvieron.
-                    if (document.getElementById('geoAuthCheck').checked && GPSManager.telemetry) {
-                        jsonMetadata.geolocation = {
-                            "latitude": GPSManager.telemetry.lat,
-                            "longitude": GPSManager.telemetry.lon
-                        };
-                    }
-
-                    const jsonBlob = new Blob([JSON.stringify(jsonMetadata, null, 4)], { type: "application/json" });
-                    const jsonLink = document.createElement('a');
-                    jsonLink.download = this.getFileName('json');
-                    jsonLink.href = URL.createObjectURL(jsonBlob);
-                    jsonLink.click();
-                }
-            }
-        };
-
-        const UIController = {
-            currentOriginalData: null, 
-            currentProcessedData: null, 
-            currentAlgMode: 'pca_rgb',
-            isLabMode: false,
-            isHoldingOriginal: false,
-            offscreenCanvas: null, 
-
-            presets: {
-                rojo_oxido:           { filter: 'yre', intensity: 15, black: 0, gamma: 100, white: 255 },
-                rojo_degradado:       { filter: 'ybr', intensity: 15, black: 0, gamma: 100, white: 255 },
-                amarillo_tenue:       { filter: 'yds', intensity: 15, black: 0, gamma: 100, white: 255 },
-                negro_carbon:         { filter: 'ybk', intensity: 15, black: 0, gamma: 100, white: 255 },
-                superposicion_colores:{ filter: 'lab', intensity: 15, black: 0, gamma: 100, white: 255 },
-                grabados_relieve:     { filter: 'dog', intensity: 130, black: 0, gamma: 100, white: 255 },
-                textura_erosionada:   { filter: 'unsharp_mask', intensity: 180, black: 10, gamma: 105, white: 245 },
-                alto_contraste:       { filter: 'crgb', intensity: 15, black: 10, gamma: 95, white: 245 }
-            },
-
-            cleanPresetsList: [
-                { id: 'rojo_oxido', label: '🔴 Rojo' },
-                { id: 'rojo_degradado', label: '🦬 Rojo deg.' },
-                { id: 'amarillo_tenue', label: '🟡 Amarillo' },
-                { id: 'negro_carbon', label: '⚫ Carbón' },
-                { id: 'superposicion_colores', label: '🥪 Capas' },
-                { id: 'grabados_relieve', label: '🟤 Grabados' },
-                { id: 'textura_erosionada', label: '🌧 Erosionado' },
-                { id: 'alto_contraste', label: '☀️ Contraste' }
-            ],
-
-            init() {
-                try { WebGL2Pipeline.init(document.getElementById('canvasView')); } catch (err) { this.updateStatus(err.message, "#ef4444"); return; }
-                ProcessingController.init();
-                FavoritesManager.load();
-                this.renderPresetButtonGrid();
-                this.renderCleanPresetChips();
-                ZoomController.init();
-                ResizerController.init();
-                this.setupEventListeners();
-                CameraController.init();
-                RoiSelector.init();
-                this.switchUIMode(false);
-                this.offscreenCanvas = document.createElement('canvas');
-
-                if (window.innerWidth <= 600) {
-                    document.body.classList.add('clean-screen');
-                }
-            },
-
-            switchUIMode(toLab) {
-                this.isLabMode = toLab;
-                document.body.classList.toggle('pro-mode-active', toLab);
-                const manualBtn = document.getElementById('toggleManualBtn');
-                const manualPanel = document.getElementById('manualPanel');
-
-                if(toLab) {
-                    document.getElementById('tabProfesional').classList.add('active');
-                    document.getElementById('tabSimple').classList.remove('active');
-                    document.getElementById('wrapperSimple').classList.add('hidden');
-                    manualBtn.classList.remove('hidden');
-                    document.getElementById('filterSelect').value = this.currentAlgMode;
-                    if (this.currentProcessedData) HistogramController.draw(this.currentProcessedData);
-                } else {
-                    document.getElementById('tabSimple').classList.add('active');
-                    document.getElementById('tabProfesional').classList.remove('active');
-                    document.getElementById('wrapperSimple').classList.remove('hidden');
-                    manualBtn.classList.add('hidden');
-                    manualPanel.classList.add('hidden');
-                    this.applyPresetValues();
-                }
-                this.updateInterfaceLabels();
-            },
-
-            updateInterfaceLabels() {
-                const filterValue = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
-                const labelIntensity = document.getElementById('labelIntensity');
-                const isColorSpaceAlgorithm = (filterValue !== 'dog' && filterValue !== 'unsharp_mask');
-
-                if (isColorSpaceAlgorithm) {
-                    labelIntensity.innerText = "Intensidad del estiramiento PCA";
-                    document.getElementById('pcaHelpText').classList.remove('hidden');
-                    document.getElementById('roiControlGroup').classList.remove('hidden');
-                } else {
-                    labelIntensity.innerText = "Intensidad del filtro seleccionado";
-                    document.getElementById('pcaHelpText').classList.add('hidden');
-                    document.getElementById('roiControlGroup').classList.add('hidden');
-                }
-            },
-
-            applyPresetValues(presetKey) {
-                if (this.isLabMode) return;
-                const pKey = presetKey || document.getElementById('presetSelect').value;
-                const config = this.presets[pKey];
-                if (!config) return;
-
-                document.getElementById('presetSelect').value = pKey;
-                this.currentAlgMode = config.filter;
-                document.getElementById('intensitySlider').value = config.intensity;
-                document.getElementById('sliderBlack').value = config.black;
-                document.getElementById('sliderGamma').value = config.gamma;
-                document.getElementById('sliderWhite').value = config.white;
-                
-                this.updateLevelLabels();
-                this.dispatchProcessing();
-                this.updateInterfaceLabels();
-                this.syncPresetUI();
-            },
-
-            renderPresetButtonGrid() {
-                const grid = document.getElementById('presetButtonGrid');
-                const select = document.getElementById('presetSelect');
-                grid.innerHTML = '';
-                Array.from(select.options).forEach(opt => {
-                    const btn = document.createElement('button');
-                    btn.type = 'button';
-                    btn.textContent = opt.textContent;
-                    btn.dataset.value = opt.value;
-                    btn.addEventListener('click', () => this.applyPresetValues(opt.value));
-                    grid.appendChild(btn);
-                });
-            },
-
-            renderCleanPresetChips() {
-                const container = document.getElementById('cleanPresetsScroll');
-                container.innerHTML = '';
-                this.cleanPresetsList.forEach(item => {
-                    const chip = document.createElement('button');
-                    chip.type = 'button';
-                    chip.className = 'clean-chip';
-                    chip.textContent = item.label;
-                    chip.dataset.value = item.id;
-                    chip.addEventListener('click', () => this.applyPresetValues(item.id));
-                    container.appendChild(chip);
-                });
-            },
-
-            syncPresetUI() {
-                const val = document.getElementById('presetSelect').value;
-                
-                const grid = document.getElementById('presetButtonGrid');
-                if (grid) {
-                    Array.from(grid.children).forEach(btn => {
-                        btn.classList.toggle('active', btn.dataset.value === val);
-                    });
-                }
-
-                const cleanScroll = document.getElementById('cleanPresetsScroll');
-                if (cleanScroll) {
-                    Array.from(cleanScroll.children).forEach(chip => {
-                        chip.classList.toggle('active', chip.dataset.value === val);
-                    });
-                }
-            },
-
-            setupEventListeners() {
-                document.getElementById('tabSimple').addEventListener('click', () => this.switchUIMode(false));
-                document.getElementById('tabProfesional').addEventListener('click', () => this.switchUIMode(true));
-                document.getElementById('presetSelect').addEventListener('change', (e) => this.applyPresetValues(e.target.value));
-
-                document.getElementById('btnGenerateCode').addEventListener('click', () => this.generateShareableCode());
-                document.getElementById('btnApplyCode').addEventListener('click', () => this.applyShareableCode());
-
-                const handleFileUpload = async (e) => {
-                    if (!e.target.files[0]) return;
-                    try {
-                        const { bitmap, telemetry } = await ImageLoader.processUploadedFile(e.target.files[0]);
-                        document.getElementById('telSize').innerText = telemetry.size;
-                        this.loadBitmapIntoPipeline(bitmap);
-                    } catch (err) { this.updateStatus(err.message, "#ef4444"); }
-                };
-
-                document.getElementById('uploadInput').addEventListener('change', handleFileUpload);
-                document.getElementById('uploadInputClean').addEventListener('change', handleFileUpload);
-
-                document.getElementById('captureBtn').addEventListener('click', async () => {
-                    const video = document.getElementById('videoPreview');
-                    if (!CameraController.stream || video.paused || video.videoWidth === 0) return;
-                    this.offscreenCanvas.width = video.videoWidth; 
-                    this.offscreenCanvas.height = video.videoHeight;
-                    this.offscreenCanvas.getContext('2d').drawImage(video, 0, 0);
-                    const bitmap = await createImageBitmap(this.offscreenCanvas);
-                    this.loadBitmapIntoPipeline(bitmap);
-                });
-
-                ['sliderBlack', 'sliderGamma', 'sliderWhite'].forEach(id => {
-                    document.getElementById(id).addEventListener('input', () => { this.updateLevelLabels(); this.requestWebGLRender(); });
-                });
-
-                document.getElementById('filterSelect').addEventListener('change', (e) => {
-                    this.currentAlgMode = e.target.value;
-                    this.updateInterfaceLabels();
-                    this.dispatchProcessing();
-                });
-                
-                document.getElementById('intensitySlider').addEventListener('input', () => this.dispatchProcessing());
-
-                let touchStartY = 0;
-
-                const startHold = (e) => {
-                    if (!this.currentOriginalData) return;
-                    if (e.type === 'touchstart') {
-                        touchStartY = e.touches[0].clientY;
-                    }
-                    this.isHoldingOriginal = true;
-                    WebGL2Pipeline.render(this.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
-                };
-
-                const moveHold = (e) => {
-                    if (!this.isHoldingOriginal) return;
-                    if (e.type === 'touchmove') {
-                        const deltaY = Math.abs(e.touches[0].clientY - touchStartY);
-                        if (deltaY > 8) {
-                            endHold(e);
-                        }
-                    }
-                };
-
-                const endHold = (e) => {
-                    if (!this.isHoldingOriginal) return;
-                    this.isHoldingOriginal = false;
-                    this.requestWebGLRender();
-                };
-
-                ['holdViewBtn', 'cleanHoldViewBtn'].forEach(id => {
-                    const btn = document.getElementById(id);
-                    if (!btn) return;
-                    btn.addEventListener('contextmenu', (e) => e.preventDefault());
-                    btn.addEventListener('mousedown', startHold);
-                    btn.addEventListener('mouseup', endHold);
-                    btn.addEventListener('mouseleave', endHold);
-                    btn.addEventListener('touchstart', startHold, { passive: true });
-                    btn.addEventListener('touchmove', moveHold, { passive: true });
-                    btn.addEventListener('touchend', endHold, { passive: true });
-                    btn.addEventListener('touchcancel', endHold, { passive: true });
-                });
-
-                document.getElementById('cleanScreenBtn').addEventListener('click', () => { document.body.classList.add('clean-screen'); });
-                document.getElementById('restoreScreenBtn').addEventListener('click', () => { document.body.classList.remove('clean-screen'); this.requestWebGLRender(); });
-
-                document.getElementById('geoAuthCheck').addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        const confirmado = window.confirm(
-                            "Tu ubicación se usará solo para incluirla en el archivo exportado. " +
-                            "No se envía a ningún servidor: todo el procesamiento ocurre en tu dispositivo.\n\n" +
-                            "¿Quieres continuar?"
-                        );
-                        if (!confirmado) { e.target.checked = false; return; }
-                        document.getElementById('metadataDisplay').classList.remove('hidden');
-                        document.getElementById('btnCopyGPS').classList.remove('hidden');
-                        GPSManager.requestLocation();
-                    } else {
-                        document.getElementById('metadataDisplay').classList.add('hidden');
-                        document.getElementById('btnCopyGPS').classList.add('hidden');
-                    }
-                });
-
-                document.getElementById('btnCopyGPS').addEventListener('click', async () => {
-                    if (!GPSManager.telemetry) { UIController.updateStatus("Aún no hay coordenadas disponibles.", "#ef4444"); return; }
-                    const text = `${GPSManager.telemetry.lat.toFixed(5)}, ${GPSManager.telemetry.lon.toFixed(5)}`;
-                    try {
-                        await navigator.clipboard.writeText(text);
-                        UIController.updateStatus("Coordenadas copiadas al portapapeles.", "#22c55e");
-                    } catch (err) {
-                        UIController.updateStatus("No se pudieron copiar automáticamente. Selecciona el texto manualmente.", "#f59e0b");
-                    }
-                });
-
-                document.getElementById('saveBtn').addEventListener('click', () => ExportManager.exportDocument());
-                document.getElementById('cleanExportBtn').addEventListener('click', () => ExportManager.exportDocument());
-            },
-
-            loadBitmapIntoPipeline(bitmap) {
-                if (bitmap.width * bitmap.height > 16777216) return;
-                ProcessingController.imageVersion++; 
-                this.currentProcessedData = null; 
-
-                const glCanvas = document.getElementById('canvasView');
-                glCanvas.width = bitmap.width; 
-                glCanvas.height = bitmap.height;
-
-                document.getElementById('viewerCard').style.aspectRatio = `${bitmap.width} / ${bitmap.height}`;
-                
-                this.offscreenCanvas.width = bitmap.width; 
-                this.offscreenCanvas.height = bitmap.height;
-                const ctx = this.offscreenCanvas.getContext('2d');
-                ctx.drawImage(bitmap, 0, 0);
-                
-                this.currentOriginalData = ctx.getImageData(0, 0, bitmap.width, bitmap.height);
-                document.getElementById('telResolution').innerText = `${bitmap.width} x ${bitmap.height} px`;
-                document.getElementById('videoPreview').classList.add('hidden');
-                document.getElementById('canvasView').classList.remove('hidden');
-
-                WebGL2Pipeline.render(this.currentOriginalData, 0, { black: 0, gamma: 1.0, white: 255 }, 0);
-
-                if (!this.isLabMode) this.applyPresetValues(); else this.dispatchProcessing();
-                bitmap.close();
-            },
-
-            dispatchProcessing() {
-                const filterValue = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
-                const targetStd = parseFloat(document.getElementById('intensitySlider').value);
-                const roi = RoiSelector.getActiveRoi();
-                ProcessingController.dispatch(this.currentOriginalData, filterValue, targetStd, roi);
-            },
-
-            requestWebGLRender() {
-                if (!this.currentProcessedData || this.isHoldingOriginal) return;
-                const filterValue = this.isLabMode ? document.getElementById('filterSelect').value : this.currentAlgMode;
-                const targetStd = parseFloat(document.getElementById('intensitySlider').value);
-                let glFilterMode = 0;
-                if (filterValue === 'dog') glFilterMode = 1;
-                if (filterValue === 'unsharp_mask') glFilterMode = 2;
-
-                const levels = {
-                    black: parseFloat(document.getElementById('sliderBlack').value),
-                    gamma: parseFloat(document.getElementById('sliderGamma').value) / 100.0,
-                    white: parseFloat(document.getElementById('sliderWhite').value)
-                };
-                const filterAmount = filterValue === 'dog' ? (targetStd / 5.0) : (targetStd / 45.0);
-                WebGL2Pipeline.render(this.currentProcessedData, glFilterMode, levels, filterAmount);
-            },
-
-            updateLevelLabels() {
-                document.getElementById('valBlack').innerText = document.getElementById('sliderBlack').value;
-                document.getElementById('valGamma').innerText = (document.getElementById('sliderGamma').value / 100.0).toFixed(2);
-                document.getElementById('valWhite').innerText = document.getElementById('sliderWhite').value;
-            },
-
-            updateStatus(msg, color) {
-                const el = document.getElementById('telStatus'); 
-                if(el) { el.innerText = msg; el.style.color = color; }
-            }
-        };
-
-        window.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('versionLabel').textContent = 'v' + APP_VERSION;
-            UIController.init();
-        });
-    </script>
+<script src="app.js" defer></script>
 </body>
 </html>

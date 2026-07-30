@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ArqueoStretch">
+  <rect width="64" height="64" rx="14" fill="#17171b"/>
+  <rect x="0.75" y="0.75" width="62.5" height="62.5" rx="13.25" fill="none" stroke="#2c2c34" stroke-width="1.5"/>
+  <defs>
+    <clipPath id="l"><rect x="0" y="0" width="32" height="64"/></clipPath>
+    <clipPath id="r"><rect x="32" y="0" width="32" height="64"/></clipPath>
+    <path id="s" fill="none" d="M32 13a19 19 0 1 1-13.44 5.56 14.25 14.25 0 1 0 20.15 20.15 9.5 9.5 0 1 1-13.44-13.44 4.75 4.75 0 1 0 6.72 6.72"/>
+  </defs>
+  <g stroke-width="4.6" stroke-linecap="round">
+    <use href="#s" stroke="#8f3a24" clip-path="url(#l)"/>
+    <use href="#s" stroke="#62c9bf" clip-path="url(#r)"/>
+  </g>
+</svg>
