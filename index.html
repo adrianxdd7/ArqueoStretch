@@ -125,7 +125,7 @@
                 <p class="masthead__sub">Realce de pigmento y microrrelieve en fotografía de arte rupestre</p>
             </div>
             <div class="masthead__meta">
-                <span class="version" id="versionLabel">v0.7</span>
+                <span class="version" id="versionLabel">v0.8</span>
                 <a class="repo-link" href="https://github.com/adrianxdd7/ArqueoStretch" target="_blank" rel="noopener noreferrer">
                     <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
                     GitHub
@@ -148,6 +148,7 @@
                 <div class="stage__inner" id="viewportInner">
                     <video id="videoPreview" autoplay playsinline muted aria-label="Vista previa en directo de la cámara"></video>
                     <canvas id="canvasView" class="hidden" role="img" aria-label="Imagen procesada"></canvas>
+                    <canvas id="shapeOverlayCanvas" class="hidden" aria-hidden="true"></canvas>
                     <div class="stage__roi hidden" id="roiOverlay"></div>
                 </div>
 
@@ -340,6 +341,65 @@
                     <div class="stat"><span class="stat__key">MÁX</span><span class="stat__val" id="lblMax">—</span></div>
                 </div>
             </section>
+
+            <section class="panel pro-card" id="shapeExtractCard">
+                <div class="panel__head">
+                    <span class="eyebrow">Extraer forma</span>
+                </div>
+                <p class="field__hint">
+                    Separa pintura de soporte por probabilidad, no por una frontera nítida:
+                    ningún método de decorrelación elimina el ruido del todo, así que el
+                    resultado se expresa como cercanía a cada grupo, no como una decisión
+                    binaria. El umbral de abajo es una elección tuya, no del algoritmo, y
+                    queda documentado en cada exportación.
+                </p>
+
+                <button class="btn btn--block" id="calcShapeBtn" type="button">
+                    <svg class="icon" aria-hidden="true"><use href="#i-info"/></svg>
+                    Calcular clasificación
+                </button>
+
+                <p class="field__hint" id="shapeStatus">Todavía no se ha calculado ninguna clasificación para esta imagen.</p>
+
+                <label class="check">
+                    <input type="checkbox" id="shapeOverlayToggle" disabled>
+                    <span>Ver mapa de probabilidad sobre la imagen</span>
+                </label>
+
+                <div class="slider-block">
+                    <div class="slider-block__head">
+                        <label class="field__label" for="shapeThreshold">Umbral de corte</label>
+                        <span class="slider-block__value" id="shapeThresholdValue">50 %</span>
+                    </div>
+                    <input class="range" type="range" id="shapeThreshold" min="1" max="99" step="1" value="50">
+                    <p class="field__hint">Por encima del umbral, se considera pintura. Ajústalo mirando el mapa de calor.</p>
+                </div>
+
+                <hr class="divider">
+
+                <div class="field">
+                    <span class="field__label">Exportar</span>
+                    <div class="btn-group" style="flex-direction:column;align-items:stretch;gap:8px">
+                        <button class="btn btn--sm" id="exportShapeProbBtn" type="button" disabled>
+                            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
+                            Mapa de probabilidad (.png)
+                        </button>
+                        <button class="btn btn--sm" id="exportShapeSilhouetteBtn" type="button" disabled>
+                            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
+                            Silueta recortada, fondo transparente (.png)
+                        </button>
+                        <button class="btn btn--sm" id="exportShapeContourBtn" type="button" disabled>
+                            <svg class="icon" aria-hidden="true"><use href="#i-download"/></svg>
+                            Contorno vectorial para calco (.svg)
+                        </button>
+                    </div>
+                    <p class="field__hint">
+                        El mapa y la silueta se generan a la resolución completa del original.
+                        El contorno vectorial se traza sobre la vista previa: para más detalle,
+                        sube la resolución de trabajo y vuelve a calcular la clasificación.
+                    </p>
+                </div>
+            </section>
         </div>
 
         <!-- ----- Columna B: salida y documentación ----- -->
@@ -495,11 +555,41 @@
 
                     <div class="manual">
                         <article class="manual__entry">
-                            <h4 class="manual__title">PCA sobre RGB</h4>
+                            <h4 class="manual__title">Familia YXX — YDS, YBR, YBK, YRE</h4>
                             <div class="manual__term">Qué hace</div>
-                            <p>Calcula los autovectores de la matriz de covarianza en los canales RGB, descorrelaciona la información espectral y aplica un estiramiento lineal extremo.</p>
+                            <p>Separa la luminancia con la fórmula estándar de luma y calcula dos ejes de crominancia ponderados a partir de ella. Sobre esos ejes se calculan luego los autovectores de covarianza y se aplica el estiramiento, igual que en el resto de algoritmos salvo CRGB. Cada variante cambia solo los pesos: YDS usa pesos neutros, YBR refuerza el eje ligado al rojo, YBK amplifica el eje del carbón, y YRE lleva el peso de la luminancia mucho más alto para exagerar rojos casi lavados.</p>
                             <div class="manual__term">Para qué sirve</div>
-                            <p>Separa restos de óxido de hierro muy degradados del soporte calizo del abrigo.</p>
+                            <p>YDS es el general y para amarillos. YBR, para rojos en general. YBK, para negros y carbón desvaído. YRE es el más agresivo con la hematites muy degradada.</p>
+                            <div class="manual__term">Límites</div>
+                            <p>Cuanto más agresiva la ponderación (sobre todo en YRE), más se amplifica también el ruido cromático en zonas sin pigmento.</p>
+                        </article>
+
+                        <article class="manual__entry">
+                            <h4 class="manual__title">Familia LAB — LAB, LDS, LRE</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>Convierte cada píxel a CIELAB pasando por XYZ, y aplica el mismo estiramiento por descorrelación sobre los canales a* y b*, con matices distintos por variante.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Son los equivalentes en espacio CIELAB de la familia YXX. Al separar mejor la luminosidad de la crominancia, funcionan mejor con sombras marcadas o iluminación solar irregular. LDS se ajusta a amarillos, LRE a rojos tenues.</p>
+                            <div class="manual__term">Límites</div>
+                            <p>LRE es muy sensible: la aplicación reduce internamente su intensidad efectiva a la mitad para que no se sature de inmediato.</p>
+                        </article>
+
+                        <article class="manual__entry">
+                            <h4 class="manual__title">CRGB</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>A diferencia de todos los demás, no calcula covarianza ni autovectores a partir de la imagen: aplica directamente una matriz 3×3 fija (heredada de DStretch) sobre los canales R, G y B.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Resultado rápido y predecible para rojos, sin depender de las estadísticas de cada foto en concreto.</p>
+                            <div class="manual__term">Límites</div>
+                            <p>Al ser una matriz fija, no se adapta a la escena: en fotos poco corrientes puede rendir peor que un algoritmo con PCA.</p>
+                        </article>
+
+                        <article class="manual__entry">
+                            <h4 class="manual__title">PCA sobre sRGB lineal</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>Calcula los autovectores de la matriz de covarianza directamente en los canales RGB, descorrelaciona la información espectral y aplica un estiramiento lineal extremo.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Estiramiento estándar sin sesgo hacia ningún color concreto; separa restos de pigmento muy degradado del soporte de roca.</p>
                             <div class="manual__term">Límites</div>
                             <p>Los colores resultantes son abstractos y no representan tonalidades reales. Amplifica también el ruido cromático.</p>
                         </article>
@@ -507,7 +597,7 @@
                         <article class="manual__entry">
                             <h4 class="manual__title">PCA sobre YCbCr</h4>
                             <div class="manual__term">Qué hace</div>
-                            <p>Aísla la luminancia antes de procesar la varianza, que se calcula solo sobre las componentes de crominancia.</p>
+                            <p>Aísla la luminancia antes de procesar la varianza, que se calcula solo sobre las componentes de crominancia (Cb, Cr), siguiendo BT.601.</p>
                             <div class="manual__term">Para qué sirve</div>
                             <p>Distinguir trazos superpuestos, y trabajar en abrigos con iluminación solar muy irregular.</p>
                         </article>
@@ -515,9 +605,29 @@
                         <article class="manual__entry">
                             <h4 class="manual__title">Diferencia de gaussianas</h4>
                             <div class="manual__term">Qué hace</div>
-                            <p>Filtro de paso de banda: resta dos versiones desenfocadas de la imagen con radios distintos.</p>
+                            <p>Filtro de paso de banda sobre la luminancia: resta dos versiones desenfocadas de la imagen con radios distintos. No usa color en absoluto.</p>
                             <div class="manual__term">Para qué sirve</div>
                             <p>Delimitar la forma de grabados someros, piqueteados e incisiones en microrrelieve.</p>
+                        </article>
+
+                        <article class="manual__entry">
+                            <h4 class="manual__title">Máscara de enfoque</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>Enfoque clásico por máscara: suma a cada canal de color la diferencia entre el píxel original y una versión desenfocada, en vez de restar dos difuminados de la luminancia como hace la diferencia de gaussianas.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Sacar microtextura y contornos difusos manteniendo el color de la foto, útil con piqueteados poco marcados.</p>
+                            <div class="manual__term">Límites</div>
+                            <p>Al operar sobre color y no solo sobre luminancia, en zonas de alto contraste cromático puede generar halos.</p>
+                        </article>
+
+                        <article class="manual__entry">
+                            <h4 class="manual__title">Extraer forma (calco)</h4>
+                            <div class="manual__term">Qué hace</div>
+                            <p>Proyecta la imagen a su espacio PCA y separa las muestras en dos grupos con k-medias. Cada píxel se clasifica por su cercanía relativa a ambos centroides, así que el resultado es una probabilidad continua entre 0 y 1, no una decisión de sí o no.</p>
+                            <div class="manual__term">Para qué sirve</div>
+                            <p>Mapa de probabilidad para publicar junto al calco, silueta recortada con fondo transparente, y contorno vectorial en SVG para pasar a un programa de vectores.</p>
+                            <div class="manual__term">Límites</div>
+                            <p>Un calco binario simplifica algo que casi nunca tiene una frontera nítida: ninguna técnica de decorrelación elimina el ruido del todo (Cerrillo Cuenca, 2024). El umbral de corte es una decisión de quien exporta, y en encuadres muy cerrados sobre el motivo los dos grupos pueden salir invertidos: conviene revisarlo con el mapa de calor antes de exportar.</p>
                         </article>
 
                         <article class="manual__entry">

@@ -213,7 +213,7 @@ function inversePixel(p, w1, w2, w3, out) {
 // Rejilla 2D en lugar de un salto lineal: un salto lineal que coincidiera
 // con el ancho de la imagen muestrearía siempre la misma columna.
 // -------------------------------------------------------------------------
-function sampleGrid(w, h, roi) {
+function sampleGrid(w, h, roi, target) {
     let x0 = 0, y0 = 0, x1 = w, y1 = h;
     if (roi) {
         x0 = Math.max(0, Math.floor(roi.x));
@@ -223,7 +223,7 @@ function sampleGrid(w, h, roi) {
         if (x1 <= x0 || y1 <= y0) { x0 = 0; y0 = 0; x1 = w; y1 = h; }
     }
     const area = (x1 - x0) * (y1 - y0);
-    const step = Math.max(1, Math.ceil(Math.sqrt(area / STAT_SAMPLE_TARGET)));
+    const step = Math.max(1, Math.ceil(Math.sqrt(area / (target || STAT_SAMPLE_TARGET))));
     return { x0, y0, x1, y1, step, restrictedToRoi: !!roi };
 }
 
@@ -424,6 +424,215 @@ function computeStretchBounds(data, w, grid, p, k) {
     return { lo: loValue, range: Math.max(1e-5, hiValue - loValue) };
 }
 
+// -------------------------------------------------------------------------
+// EXTRACCIÓN DE FORMA (pigmento vs. soporte)
+//
+// Referencia: Cerrillo Cuenca, E. (2024). "Las técnicas de realce digital en
+// pinturas prehistóricas. Elementos para un debate". CPAG 34.
+//
+// El artículo argumenta que un calco binario (pintura / no-pintura) es una
+// simplificación que no refleja bien cómo se comporta el ruido en una imagen
+// digital: ninguna técnica de decorrelación —ni PCA ni ICA— elimina el ruido
+// del todo. La alternativa que defiende, siguiendo su propio trabajo con
+// k-medias (Cerrillo-Cuenca y Sepúlveda, 2015) y el sistema ERA (Monna et
+// al., 2022), es expresar el resultado como una probabilidad continua de
+// pertenencia y dejar visible la incertidumbre, en vez de forzar una
+// frontera nítida donde puede no haberla.
+//
+// Por eso esta implementación no clasifica cada píxel de forma binaria:
+// calcula qué tan cerca está, en el espacio ya descorrelacionado por PCA, de
+// los dos grupos (soporte y pintura) encontrados por k-medias, y expresa esa
+// cercanía como un valor continuo entre 0 y 1. El umbral para un contorno o
+// una silueta es una decisión que toma quien exporta, no el algoritmo, y por
+// eso se guarda siempre junto a los demás parámetros.
+// -------------------------------------------------------------------------
+
+/**
+ * PCA sobre RGB para el conjunto de muestras de la zona de cálculo. A
+ * diferencia de computeConstants, aquí no se construye una matriz de
+ * estiramiento: solo interesan la media y los tres autovectores, para poder
+ * proyectar cualquier píxel al espacio donde el ruido está más separado de
+ * la señal.
+ */
+function computePcaBasis(data, w, h, roi) {
+    let grid = sampleGrid(w, h, roi);
+
+    let s1 = 0, s2 = 0, s3 = 0;
+    let n = forEachSample(data, w, grid, (r, g, b) => { s1 += r; s2 += g; s3 += b; });
+
+    if (n < 64 && grid.restrictedToRoi) {
+        grid = { ...grid, restrictedToRoi: false };
+        s1 = s2 = s3 = 0;
+        n = forEachSample(data, w, grid, (r, g, b) => { s1 += r; s2 += g; s3 += b; });
+    }
+    if (n === 0) throw new Error("No hay píxeles utilizables para clasificar la imagen.");
+
+    const mean = [s1 / n, s2 / n, s3 / n];
+
+    let c00 = 0, c01 = 0, c02 = 0, c11 = 0, c12 = 0, c22 = 0;
+    forEachSample(data, w, grid, (r, g, b) => {
+        const v1 = r - mean[0], v2 = g - mean[1], v3 = b - mean[2];
+        c00 += v1 * v1; c01 += v1 * v2; c02 += v1 * v3;
+        c11 += v2 * v2; c12 += v2 * v3; c22 += v3 * v3;
+    });
+    const div = Math.max(1, n - 1);
+    const cov = [
+        [c00 / div, c01 / div, c02 / div],
+        [c01 / div, c11 / div, c12 / div],
+        [c02 / div, c12 / div, c22 / div]
+    ];
+
+    const eigen = jacobiEigenDecomposition(cov);
+    const order = [0, 1, 2].sort((a, b) => eigen.values[b] - eigen.values[a]);
+    const V = [
+        [eigen.vectors[0][order[0]], eigen.vectors[0][order[1]], eigen.vectors[0][order[2]]],
+        [eigen.vectors[1][order[0]], eigen.vectors[1][order[1]], eigen.vectors[1][order[2]]],
+        [eigen.vectors[2][order[0]], eigen.vectors[2][order[1]], eigen.vectors[2][order[2]]]
+    ];
+
+    return { mean, V, grid };
+}
+
+function projectToPca(basis, r, g, b, out) {
+    const v1 = r - basis.mean[0], v2 = g - basis.mean[1], v3 = b - basis.mean[2];
+    out[0] = basis.V[0][0] * v1 + basis.V[1][0] * v2 + basis.V[2][0] * v3;
+    out[1] = basis.V[0][1] * v1 + basis.V[1][1] * v2 + basis.V[2][1] * v3;
+    out[2] = basis.V[0][2] * v1 + basis.V[1][2] * v2 + basis.V[2][2] * v3;
+}
+
+/**
+ * K-medias con k=2 sobre puntos 3D. La inicialización elige los dos puntos
+ * más alejados entre sí (vía la media) en lugar de aleatoria: con solo dos
+ * grupos, es determinista y converge en pocas iteraciones.
+ */
+function kmeans2(points) {
+    const n = points.length;
+    let mean = [0, 0, 0];
+    for (const p of points) { mean[0] += p[0]; mean[1] += p[1]; mean[2] += p[2]; }
+    mean = [mean[0] / n, mean[1] / n, mean[2] / n];
+
+    const dist2 = (a, b) => {
+        const dx = a[0] - b[0], dy = a[1] - b[1], dz = a[2] - b[2];
+        return dx * dx + dy * dy + dz * dz;
+    };
+
+    let c0 = points[0], best = -1;
+    for (const p of points) { const d = dist2(p, mean); if (d > best) { best = d; c0 = p; } }
+    let c1 = points[0]; best = -1;
+    for (const p of points) { const d = dist2(p, c0); if (d > best) { best = d; c1 = p; } }
+    c0 = c0.slice(); c1 = c1.slice();
+
+    const assign = new Uint8Array(n);
+    for (let iter = 0; iter < 20; iter++) {
+        let changed = false;
+        for (let i = 0; i < n; i++) {
+            const a = (dist2(points[i], c0) <= dist2(points[i], c1)) ? 0 : 1;
+            if (a !== assign[i]) { assign[i] = a; changed = true; }
+        }
+        const s0 = [0, 0, 0], s1 = [0, 0, 0];
+        let n0 = 0, n1 = 0;
+        for (let i = 0; i < n; i++) {
+            const s = assign[i] === 0 ? s0 : s1;
+            s[0] += points[i][0]; s[1] += points[i][1]; s[2] += points[i][2];
+            if (assign[i] === 0) n0++; else n1++;
+        }
+        if (n0 > 0) c0 = [s0[0] / n0, s0[1] / n0, s0[2] / n0];
+        if (n1 > 0) c1 = [s1[0] / n1, s1[1] / n1, s1[2] / n1];
+        if (!changed) break;
+    }
+
+    let n0 = 0, n1 = 0;
+    for (const a of assign) { if (a === 0) n0++; else n1++; }
+    return { c0, c1, n0, n1 };
+}
+
+/**
+ * Clasificación completa: proyecta las muestras de la zona de cálculo al
+ * espacio PCA y ejecuta k-medias. El grupo con más píxeles se etiqueta como
+ * "soporte" (la roca ocupa casi siempre más área que la pintura); el más
+ * pequeño, como "pintura". Es una convención razonable, no una certeza: en
+ * un encuadre muy ajustado a un motivo grande podría invertirse, por lo que
+ * conviene revisar el resultado antes de exportar.
+ */
+// K-medias itera muchas veces sobre cada muestra: con las mismas ~2M
+// muestras que usan las medias y la covarianza sería demasiado lento en
+// móviles. Con 150.000 puntos los centroides ya son estables.
+const KMEANS_SAMPLE_TARGET = 150000;
+
+function computeShapeConstants(data, w, h, roi) {
+    const basis = computePcaBasis(data, w, h, roi);
+    const kmeansGrid = sampleGrid(w, h, roi, KMEANS_SAMPLE_TARGET);
+
+    const points = [];
+    forEachSample(data, w, kmeansGrid, (r, g, b) => {
+        const v1 = r - basis.mean[0], v2 = g - basis.mean[1], v3 = b - basis.mean[2];
+        points.push([
+            basis.V[0][0] * v1 + basis.V[1][0] * v2 + basis.V[2][0] * v3,
+            basis.V[0][1] * v1 + basis.V[1][1] * v2 + basis.V[2][1] * v3,
+            basis.V[0][2] * v1 + basis.V[1][2] * v2 + basis.V[2][2] * v3
+        ]);
+    });
+    if (points.length < 4) throw new Error("No hay suficientes píxeles para separar pintura de soporte.");
+
+    const { c0, c1, n0, n1 } = kmeans2(points);
+    const soporte = n0 >= n1 ? c0 : c1;
+    const pintura = n0 >= n1 ? c1 : c0;
+
+    return {
+        mean: basis.mean, V: basis.V,
+        soporte, pintura,
+        nSoporte: Math.max(n0, n1), nPintura: Math.min(n0, n1), nTotal: n0 + n1
+    };
+}
+
+const _pcaProj = new Float64Array(3);
+
+/**
+ * Probabilidad continua (0–1) de que un píxel sea pigmento: la distancia
+ * relativa entre los dos centroides, no una decisión binaria. 0,5 es el
+ * punto de máxima ambigüedad entre ambos grupos.
+ */
+function pigmentProbability(shape, r, g, b) {
+    projectToPca(shape, r, g, b, _pcaProj);
+    const dS = Math.hypot(_pcaProj[0] - shape.soporte[0], _pcaProj[1] - shape.soporte[1], _pcaProj[2] - shape.soporte[2]);
+    const dP = Math.hypot(_pcaProj[0] - shape.pintura[0], _pcaProj[1] - shape.pintura[1], _pcaProj[2] - shape.pintura[2]);
+    const denom = dS + dP;
+    return denom > 1e-9 ? (dS / denom) : 0.5;
+}
+
+// Rampa del mapa de calor: del acento cian de la interfaz (probabilidad
+// alta) a un violeta oscuro apenas visible (probabilidad baja), para que el
+// mapa se lea con la misma lógica cromática que el resto de la aplicación.
+const HEATMAP_LOW = [24, 18, 36], HEATMAP_HIGH = [98, 201, 191];
+
+function applyShapeProbability(srcData, dst, count, shape, dstChannels) {
+    for (let i = 0; i < count; i++) {
+        const s = i * 4;
+        const prob = pigmentProbability(shape, srcData[s], srcData[s + 1], srcData[s + 2]);
+        const d = i * dstChannels;
+        dst[d] = Math.round(HEATMAP_LOW[0] + (HEATMAP_HIGH[0] - HEATMAP_LOW[0]) * prob);
+        dst[d + 1] = Math.round(HEATMAP_LOW[1] + (HEATMAP_HIGH[1] - HEATMAP_LOW[1]) * prob);
+        dst[d + 2] = Math.round(HEATMAP_LOW[2] + (HEATMAP_HIGH[2] - HEATMAP_LOW[2]) * prob);
+        if (dstChannels === 4) dst[d + 3] = 255;
+    }
+}
+
+/**
+ * Silueta recortada: el umbral es la única frontera nítida de todo el
+ * proceso, y es una elección de quien exporta, no del algoritmo. Requiere
+ * canal alfa: fuera del umbral el píxel queda transparente.
+ */
+function applyShapeSilhouette(srcData, dst, count, shape, threshold, dstChannels) {
+    for (let i = 0; i < count; i++) {
+        const s = i * 4;
+        const prob = pigmentProbability(shape, srcData[s], srcData[s + 1], srcData[s + 2]);
+        const d = i * dstChannels;
+        const inside = prob >= threshold;
+        dst[d] = srcData[s]; dst[d + 1] = srcData[s + 1]; dst[d + 2] = srcData[s + 2];
+        dst[d + 3] = inside ? 255 : 0;
+    }
+}
+
 function jacobiEigenDecomposition(A) {
     const V = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
     const M = [[A[0][0], A[0][1], A[0][2]], [A[1][0], A[1][1], A[1][2]], [A[2][0], A[2][1], A[2][2]]];
@@ -612,8 +821,7 @@ function pngChunk(type, data) {
  * Filtro Paeth (tipo 4). Es el que mejor comprime en fotografía y cuesta
  * poco: unas pocas operaciones por byte.
  */
-function paethFilterRow(cur, prev, w, out) {
-    const bpp = 3;
+function paethFilterRow(cur, prev, w, out, bpp) {
     out[0] = 4;
     for (let i = 0; i < w * bpp; i++) {
         const a = i >= bpp ? cur[i - bpp] : 0;
@@ -627,10 +835,11 @@ function paethFilterRow(cur, prev, w, out) {
 }
 
 class PngWriter {
-    constructor(width, height) {
+    constructor(width, height, hasAlpha) {
         this.width = width;
         this.height = height;
-        this.rowBytes = width * 3;
+        this.bpp = hasAlpha ? 4 : 3;
+        this.rowBytes = width * this.bpp;
         this.prevRow = null;
         this.curFiltered = new Uint8Array(this.rowBytes + 1);
 
@@ -639,7 +848,7 @@ class PngWriter {
         dv.setUint32(0, width);
         dv.setUint32(4, height);
         ihdr[8] = 8;    // 8 bits por canal
-        ihdr[9] = 2;    // color tipo 2: RGB sin alfa (25 % menos que RGBA)
+        ihdr[9] = hasAlpha ? 6 : 2;   // tipo 2: RGB; tipo 6: RGBA (silueta recortada)
         ihdr[10] = 0;   // compresión deflate
         ihdr[11] = 0;   // método de filtrado estándar
         ihdr[12] = 0;   // sin entrelazado
@@ -665,7 +874,7 @@ class PngWriter {
     }
 
     async writeRow(rgbRow) {
-        paethFilterRow(rgbRow, this.prevRow, this.width, this.curFiltered);
+        paethFilterRow(rgbRow, this.prevRow, this.width, this.curFiltered, this.bpp);
         await this.writer.write(this.curFiltered.slice());
         if (!this.prevRow) this.prevRow = new Uint8Array(this.rowBytes);
         this.prevRow.set(rgbRow.subarray(0, this.rowBytes));
@@ -697,6 +906,10 @@ self.onmessage = function (e) {
                 jobId: data.jobId
             });
         });
+        return;
+    }
+    if (data.type === 'shape') {
+        handleShapeCompute(data);
         return;
     }
     handleProcess(data);
@@ -736,6 +949,44 @@ function handleProcess(data) {
 }
 
 /**
+ * Clasificación pintura/soporte sobre la previsualización: calcula la base
+ * PCA y los centroides de k-medias, y de paso ya devuelve el mapa de
+ * probabilidad a esa misma resolución para que la interfaz pueda dibujar el
+ * mapa de calor sin tener que volver a pedirlo.
+ */
+function handleShapeCompute(data) {
+    const version = data.version;
+    try {
+        const { imgData, roi } = data;
+        if (!imgData || !imgData.data || imgData.width <= 0 || imgData.height <= 0) {
+            throw new Error("La estructura de la imagen recibida no es válida.");
+        }
+        const w = imgData.width, h = imgData.height;
+        const numPixels = w * h;
+        if (imgData.data.length < numPixels * 4) {
+            throw new Error("Los datos de la imagen están incompletos.");
+        }
+
+        const shapeConstants = computeShapeConstants(imgData.data, w, h, roi);
+
+        const probability = new Uint8Array(numPixels);
+        for (let i = 0; i < numPixels; i++) {
+            const s = i * 4;
+            probability[i] = Math.round(255 * pigmentProbability(shapeConstants, imgData.data[s], imgData.data[s + 1], imgData.data[s + 2]));
+        }
+
+        self.postMessage({ type: 'shape', shapeConstants, probability, width: w, height: h, version }, [probability.buffer]);
+
+    } catch (err) {
+        self.postMessage({
+            type: 'shape',
+            error: (err && err.message) ? err.message : String(err),
+            version
+        });
+    }
+}
+
+/**
  * EXPORTACIÓN A RESOLUCIÓN COMPLETA
  *
  * Decodifica el archivo original, lo recorre por bandas horizontales y va
@@ -761,6 +1012,10 @@ async function handleExport(job) {
 
     const W = bitmap.width, H = bitmap.height;
     if (!W || !H) throw new Error("La imagen original no tiene dimensiones utilizables.");
+
+    if (kind === 'shape_probability' || kind === 'shape_silhouette') {
+        return handleShapeExport(job, bitmap, W, H, report);
+    }
 
     const levelsLut = buildLevelsLut(levels);
     const isStructural = (kind === 'dog' || kind === 'unsharp_mask');
@@ -845,6 +1100,62 @@ async function handleExport(job) {
     const out = await png.finish();
 
     self.postMessage({ type: 'export', jobId, blob: out, width: outW, height: H });
+}
+
+/**
+ * Exportación a resolución completa del mapa de probabilidad o de la
+ * silueta recortada. Reutiliza la clasificación (medias, autovectores y
+ * centroides) calculada sobre la previsualización, igual que el resto de la
+ * aplicación reutiliza las constantes de color: el resultado exportado es
+ * el mismo que se vio en pantalla, solo que a resolución completa.
+ */
+async function handleShapeExport(job, bitmap, W, H, report) {
+    const { jobId, kind, shapeConstants, shapeThreshold } = job;
+    if (!shapeConstants) throw new Error("Todavía no se ha calculado la clasificación pintura/soporte.");
+
+    const isSilhouette = (kind === 'shape_silhouette');
+    const channels = isSilhouette ? 4 : 3;
+
+    let stripRows = Math.max(1, Math.floor(STRIP_TARGET_PIXELS / W));
+    if (stripRows > H) stripRows = H;
+
+    const canvas = new OffscreenCanvas(W, Math.min(H, stripRows));
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error("No se pudo preparar el lienzo de trabajo.");
+
+    const png = new PngWriter(W, H, isSilhouette);
+    const outRow = new Uint8Array(W * channels);
+    const stripOut = new Uint8Array(W * stripRows * channels);
+
+    for (let y0 = 0; y0 < H; y0 += stripRows) {
+        const rows = Math.min(stripRows, H - y0);
+
+        canvas.height = rows;
+        ctx.clearRect(0, 0, W, rows);
+        ctx.drawImage(bitmap, 0, y0, W, rows, 0, 0, W, rows);
+        const src = ctx.getImageData(0, 0, W, rows).data;
+
+        if (isSilhouette) {
+            applyShapeSilhouette(src, stripOut, W * rows, shapeConstants, shapeThreshold, channels);
+        } else {
+            applyShapeProbability(src, stripOut, W * rows, shapeConstants, channels);
+        }
+
+        for (let r = 0; r < rows; r++) {
+            outRow.set(stripOut.subarray(r * W * channels, (r + 1) * W * channels));
+            await png.writeRow(outRow);
+        }
+
+        report('procesando', (y0 + rows) / H);
+    }
+
+    bitmap.close();
+    canvas.width = canvas.height = 0;
+
+    report('comprimiendo', 1);
+    const out = await png.finish();
+
+    self.postMessage({ type: 'export', jobId, blob: out, width: W, height: H });
 }
 
 /**

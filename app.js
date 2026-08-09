@@ -3,7 +3,7 @@
  * Interfaz, pipeline de GPU y coordinación con el worker de procesamiento.
  * ========================================================================= */
 
-const APP_VERSION = "0.7";
+const APP_VERSION = "0.8";
 
 /* -------------------------------------------------------------------------
  * Caché de referencias al DOM.
@@ -1384,6 +1384,11 @@ const ProcessingController = {
             return;
         }
 
+        if (e.data && e.data.type === 'shape') {
+            ShapeExtractor.handleWorkerMessage(e.data);
+            return;
+        }
+
         this.busy = false;
 
         const runPending = () => {
@@ -1662,6 +1667,264 @@ const ExportManager = {
 };
 
 /* -------------------------------------------------------------------------
+ * Extracción de forma (pintura vs. soporte)
+ *
+ * En vez de un calco binario, se clasifica cada píxel de forma continua
+ * (0-1): cuánto se parece a la pintura frente al soporte, en el espacio ya
+ * descorrelacionado por PCA, según los dos grupos que encuentra k-medias.
+ * El umbral para una silueta o un contorno es una elección de quien
+ * exporta, no una frontera que decida el algoritmo, y por eso se aplica
+ * siempre al final, nunca dentro de la clasificación en sí. Ver el manual
+ * técnico en la interfaz para la referencia bibliográfica.
+ * ---------------------------------------------------------------------- */
+const ShapeExtractor = {
+    shapeConstants: null,
+    probability: null,   // Uint8Array a resolución de previsualización, 0-255
+    width: 0,
+    height: 0,
+    computing: false,
+    threshold: 0.5,
+
+    init() {
+        el('calcShapeBtn').addEventListener('click', () => this.compute());
+        el('shapeOverlayToggle').addEventListener('change', (e) => this.setOverlayVisible(e.target.checked));
+        el('shapeThreshold').addEventListener('input', () => this.onThresholdChange());
+        el('exportShapeProbBtn').addEventListener('click', () => this.exportProbability());
+        el('exportShapeSilhouetteBtn').addEventListener('click', () => this.exportSilhouette());
+        el('exportShapeContourBtn').addEventListener('click', () => this.exportContour());
+        this.onThresholdChange();
+    },
+
+    reset() {
+        this.shapeConstants = null;
+        this.probability = null;
+        this.width = 0;
+        this.height = 0;
+        this.computing = false;
+        el('calcShapeBtn').disabled = false;
+        el('shapeStatus').textContent = "Todavía no se ha calculado ninguna clasificación para esta imagen.";
+        el('shapeOverlayToggle').checked = false;
+        el('shapeOverlayToggle').disabled = true;
+        ['exportShapeProbBtn', 'exportShapeSilhouetteBtn', 'exportShapeContourBtn'].forEach(id => { el(id).disabled = true; });
+        this.setOverlayVisible(false);
+    },
+
+    compute() {
+        if (!UIController.currentOriginalData || !ProcessingController.worker) {
+            UIController.updateStatus("Carga primero una imagen.", "warn");
+            return;
+        }
+        if (this.computing) return;
+        this.computing = true;
+        el('calcShapeBtn').disabled = true;
+        UIController.updateStatus("Clasificando pintura y soporte", "busy");
+
+        const originalData = UIController.currentOriginalData;
+        const bufferCopy = new Uint8ClampedArray(originalData.data.length);
+        bufferCopy.set(originalData.data);
+
+        ProcessingController.worker.postMessage({
+            type: 'shape',
+            imgData: { width: originalData.width, height: originalData.height, data: bufferCopy },
+            roi: RoiSelector.getActiveRoi(),
+            version: ProcessingController.imageVersion
+        }, [bufferCopy.buffer]);
+    },
+
+    handleWorkerMessage(data) {
+        this.computing = false;
+        el('calcShapeBtn').disabled = false;
+
+        if (data.error) {
+            UIController.updateStatus("No se pudo clasificar la imagen: " + data.error, "error");
+            return;
+        }
+        // Resultado de una imagen o resolución ya descartada.
+        if (data.version !== ProcessingController.imageVersion) return;
+
+        this.shapeConstants = data.shapeConstants;
+        this.probability = data.probability;
+        this.width = data.width;
+        this.height = data.height;
+
+        const total = this.shapeConstants.nTotal || 1;
+        const pctPintura = Math.round(100 * this.shapeConstants.nPintura / total);
+        el('shapeStatus').textContent =
+            `Clasificación lista. En la muestra usada, un ${pctPintura} % se agrupó como pintura y el resto como soporte. ` +
+            `Revísalo con el mapa de probabilidad antes de fiarte del umbral: en encuadres muy cerrados sobre el motivo, los dos grupos pueden salir invertidos.`;
+
+        ['exportShapeProbBtn', 'exportShapeSilhouetteBtn', 'exportShapeContourBtn'].forEach(id => { el(id).disabled = false; });
+        el('shapeOverlayToggle').disabled = false;
+        el('shapeOverlayToggle').checked = true;
+        this.setOverlayVisible(true);
+        UIController.updateStatus("Listo", "ok");
+    },
+
+    onThresholdChange() {
+        const pct = parseInt(el('shapeThreshold').value, 10) || 50;
+        this.threshold = pct / 100;
+        el('shapeThresholdValue').textContent = pct + ' %';
+        if (this.probability && !el('shapeOverlayCanvas').classList.contains('hidden')) this.drawOverlay();
+    },
+
+    setOverlayVisible(visible) {
+        const canvas = el('shapeOverlayCanvas');
+        if (visible && this.probability) {
+            this.drawOverlay();
+            canvas.classList.remove('hidden');
+        } else {
+            canvas.classList.add('hidden');
+        }
+    },
+
+    /**
+     * Dibuja el mapa de calor sobre un lienzo transparente colocado encima
+     * del visor (hereda el encaje del resto de capas de .stage__inner). Los
+     * píxeles por encima del umbral elegido se resaltan más: es una guía
+     * visual para decidir el corte, no una frontera que imponga el propio
+     * mapa.
+     */
+    drawOverlay() {
+        const canvas = el('shapeOverlayCanvas');
+        if (!this.probability || !this.width || !this.height) return;
+        canvas.width = this.width;
+        canvas.height = this.height;
+        const ctx = canvas.getContext('2d');
+        const imgData = ctx.createImageData(this.width, this.height);
+        const out = imgData.data;
+        const prob = this.probability;
+        const t = Math.round(this.threshold * 255);
+
+        for (let i = 0; i < prob.length; i++) {
+            const p = prob[i];
+            const d = i * 4;
+            out[d] = 98; out[d + 1] = 201; out[d + 2] = 191; // mismo acento cian de la interfaz
+            out[d + 3] = (p >= t) ? Math.round(90 + (p / 255) * 140) : Math.round((p / 255) * 55);
+        }
+        ctx.putImageData(imgData, 0, 0);
+    },
+
+    suffixedFileName(extension, suffix) {
+        const full = ExportManager.getFileName(extension);
+        return full.replace(new RegExp('\\.' + extension + '$'), '_' + suffix + '.' + extension);
+    },
+
+    async exportProbability() {
+        if (!this.shapeConstants || !UIController.sourceBlob) return;
+        try {
+            UIController.updateStatus("Exportando el mapa de probabilidad", "busy", { toast: true });
+            const blob = await ProcessingController.exportFullResolution({
+                blob: UIController.sourceBlob,
+                kind: 'shape_probability',
+                shapeConstants: this.shapeConstants
+            });
+            ExportManager.downloadBlob(blob, this.suffixedFileName('png', 'probabilidad'));
+            UIController.updateStatus("Exportado", "ok", { toast: true });
+        } catch (err) {
+            UIController.updateStatus("No se pudo exportar el mapa de probabilidad: " + (err.message || err), "error");
+        }
+    },
+
+    async exportSilhouette() {
+        if (!this.shapeConstants || !UIController.sourceBlob) return;
+        try {
+            UIController.updateStatus("Exportando la silueta recortada", "busy", { toast: true });
+            const blob = await ProcessingController.exportFullResolution({
+                blob: UIController.sourceBlob,
+                kind: 'shape_silhouette',
+                shapeConstants: this.shapeConstants,
+                shapeThreshold: this.threshold
+            });
+            ExportManager.downloadBlob(blob, this.suffixedFileName('png', 'silueta'));
+            UIController.updateStatus("Exportado", "ok", { toast: true });
+        } catch (err) {
+            UIController.updateStatus("No se pudo exportar la silueta: " + (err.message || err), "error");
+        }
+    },
+
+    /**
+     * Contorno vectorial (marching squares) sobre el mapa ya calculado, a la
+     * resolución de la vista previa: para un calco de referencia no hace
+     * falta precisión submilimétrica, y así se evita trazar cientos de
+     * millones de celdas en el propio navegador. Si hace falta más detalle,
+     * sube la resolución de trabajo en el panel «Vista previa» y vuelve a
+     * calcular la clasificación antes de exportar el contorno.
+     */
+    exportContour() {
+        if (!this.probability || !this.width || !this.height) return;
+        try {
+            const svg = this.traceContourSvg(this.threshold);
+            const blob = new Blob([svg], { type: 'image/svg+xml' });
+            ExportManager.downloadBlob(blob, this.suffixedFileName('svg', 'contorno'));
+        } catch (err) {
+            UIController.updateStatus("No se pudo generar el contorno: " + (err.message || err), "error");
+        }
+    },
+
+    /**
+     * Marching squares clásico de 16 casos con interpolación en los bordes
+     * de celda. Los segmentos no se cosen en un único trazado: cada uno se
+     * escribe como un subtrazado "M...L..." independiente. El SVG resultante
+     * es igual de válido y de preciso; un programa de vectores como
+     * Illustrator o Inkscape puede unir los segmentos con su propia
+     * herramienta si se necesita una sola línea continua.
+     */
+    traceContourSvg(threshold) {
+        const w = this.width, h = this.height, prob = this.probability;
+        const t = threshold * 255;
+        const val = (x, y) => prob[y * w + x];
+
+        const interp = (v0, v1, x0, y0, x1, y1) => {
+            const denom = v1 - v0;
+            const f = Math.abs(denom) > 1e-6 ? (t - v0) / denom : 0.5;
+            const c = Math.max(0, Math.min(1, f));
+            return [x0 + (x1 - x0) * c, y0 + (y1 - y0) * c];
+        };
+
+        const parts = [];
+        for (let y = 0; y < h - 1; y++) {
+            for (let x = 0; x < w - 1; x++) {
+                const a = val(x, y), b = val(x + 1, y), c = val(x + 1, y + 1), d = val(x, y + 1);
+                const ca = a >= t ? 1 : 0, cb = b >= t ? 1 : 0, cc = c >= t ? 1 : 0, cd = d >= t ? 1 : 0;
+                const caseIdx = (ca << 3) | (cb << 2) | (cc << 1) | cd;
+                if (caseIdx === 0 || caseIdx === 15) continue;
+
+                const top = () => interp(a, b, x, y, x + 1, y);
+                const right = () => interp(b, c, x + 1, y, x + 1, y + 1);
+                const bottom = () => interp(d, c, x, y + 1, x + 1, y + 1);
+                const left = () => interp(a, d, x, y, x, y + 1);
+
+                const seg = (p1, p2) => {
+                    parts.push(`M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L${p2[0].toFixed(1)} ${p2[1].toFixed(1)}`);
+                };
+
+                switch (caseIdx) {
+                    case 1: seg(left(), bottom()); break;
+                    case 2: seg(bottom(), right()); break;
+                    case 3: seg(left(), right()); break;
+                    case 4: seg(top(), right()); break;
+                    case 5: seg(top(), left()); seg(bottom(), right()); break;
+                    case 6: seg(top(), bottom()); break;
+                    case 7: seg(top(), left()); break;
+                    case 8: seg(top(), left()); break;
+                    case 9: seg(top(), bottom()); break;
+                    case 10: seg(top(), right()); seg(left(), bottom()); break;
+                    case 11: seg(top(), right()); break;
+                    case 12: seg(left(), right()); break;
+                    case 13: seg(bottom(), right()); break;
+                    case 14: seg(left(), bottom()); break;
+                }
+            }
+        }
+
+        return '<?xml version="1.0" encoding="UTF-8"?>\n' +
+            `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">\n` +
+            `<path d="${parts.join(' ')}" fill="none" stroke="#000000" stroke-width="1" stroke-linecap="round"/>\n` +
+            `</svg>\n`;
+    }
+};
+
+/* -------------------------------------------------------------------------
  * Controlador principal de la interfaz
  * ---------------------------------------------------------------------- */
 const UIController = {
@@ -1822,6 +2085,7 @@ const UIController = {
         ZoomController.init();
         ResizerController.init();
         RoiSelector.init();
+        ShapeExtractor.init();
         this.setupEventListeners();
         this.switchUIMode(false);
         this.offscreenCanvas = document.createElement('canvas');
@@ -2412,6 +2676,7 @@ const UIController = {
         this.currentProcessedData = null;
         this.currentConstants = null;
         this.isHoldingOriginal = false;
+        ShapeExtractor.reset();
 
         // Al recargar la MISMA imagen con otra resolución de trabajo, la
         // selección sigue siendo válida: solo hay que reescalar sus

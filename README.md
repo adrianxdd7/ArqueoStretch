@@ -23,6 +23,7 @@ puede instalar y funciona sin conexión, que es lo normal en una cueva.
   - [Qué algoritmo elegir](#qué-algoritmo-elegir)
   - [Resolución: qué ves y qué exportas](#resolución-qué-ves-y-qué-exportas)
   - [Exportación y reproducibilidad](#exportación-y-reproducibilidad)
+  - [Extraer forma (calco)](#extraer-forma-calco)
   - [Coordenadas GPS: leer antes de compartir](#coordenadas-gps-leer-antes-de-compartir)
 - [Para modificarlo](#para-modificarlo)
   - [Estructura del proyecto](#estructura-del-proyecto)
@@ -128,6 +129,44 @@ También puedes generar un **código de configuración** (`ASW1:…`) para pasar
 mismos ajustes a otra persona por mensaje, y guardar configuraciones con nombre
 en tu navegador.
 
+## Extraer forma (calco)
+
+En el panel **Extraer forma** (modo profesional), ArqueoStretch separa
+pintura de soporte. La forma en que lo hace responde a una idea concreta, no
+a una simplificación cómoda:
+
+> Un calco tradicional separa lo que es pintura de lo que no lo es de forma
+> dicotómica. Trasladado al análisis digital, esa clasificación binaria es
+> poco realista: ninguna técnica de decorrelación —ni PCA ni ICA— elimina el
+> ruido del todo, así que forzar una frontera nítida entre pintura y soporte
+> esconde una incertidumbre que sigue ahí (Cerrillo Cuenca, 2024).
+
+Por eso la clasificación no es un sí/no. La aplicación proyecta la imagen a
+su espacio de componentes principales (PCA) y separa las muestras en dos
+grupos con k-medias, un método ya usado con este mismo fin (Cerrillo-Cuenca
+y Sepúlveda, 2015; Monna et al., 2022). Cada píxel se clasifica según su
+cercanía relativa a ambos centroides: un valor continuo entre 0 y 1, no una
+etiqueta.
+
+1. **Calcular clasificación.** Analiza la zona de cálculo (o toda la imagen,
+   si no has dibujado ninguna) y muestra qué porcentaje de la muestra se
+   agrupó como pintura. En encuadres muy cerrados sobre un motivo grande los
+   dos grupos pueden salir invertidos: revisa el mapa antes de exportar.
+2. **Mapa de probabilidad.** Un mapa de calor sobre la imagen: más opaco
+   cuanto más se parece un píxel a la pintura. Es el resultado más honesto,
+   porque no oculta la ambigüedad.
+3. **Umbral de corte.** Por encima de este valor, un píxel cuenta como
+   pintura. Es una decisión de quien exporta, no del algoritmo, y por eso
+   queda anotada en el nombre del archivo y puede documentarse aparte.
+4. **Exportación**, en tres formatos:
+   - **Mapa de probabilidad (`.png`)**, a resolución completa.
+   - **Silueta recortada (`.png`)**, con fondo transparente fuera del umbral.
+   - **Contorno vectorial (`.svg`)**, trazado con *marching squares* sobre la
+     vista previa —no hace falta precisión submilimétrica para un calco de
+     referencia—. Si necesitas más detalle, sube la resolución de trabajo en
+     el panel **Vista previa** y vuelve a calcular la clasificación antes de
+     exportar el contorno.
+
 ## Coordenadas GPS: leer antes de compartir
 
 Si activas la casilla, las coordenadas se guardan **solo dentro del `.json`**,
@@ -152,7 +191,7 @@ estáticos: se editan y ya está. No hay `npm install` ni `build`.
 | `index.html` | Estructura de la página y el juego de iconos SVG |
 | `styles.css` | Todos los estilos, con las variables de diseño al principio |
 | `app.js` | Interfaz, pipeline de GPU (WebGL2) y coordinación |
-| `worker.js` | Los cálculos: PCA, Jacobi, CIELAB, procesado por bandas y codificador PNG |
+| `worker.js` | Los cálculos: PCA, Jacobi, k-medias, CIELAB, procesado por bandas y codificador PNG (RGB y RGBA) |
 | `sw.js` | Service worker: funcionamiento sin conexión |
 | `manifest.json` | Datos para instalarla como aplicación |
 | `favicon.svg`, `icon-*.png` | Iconos |
@@ -243,6 +282,12 @@ cuantización, Huffman), así que sigue pasando por el canvas y hereda su límit
 - **Cambiar la resolución de trabajo**: `QUALITY_LEVELS` en `app.js`.
 - **Cambiar colores, tamaños o espaciado**: variables CSS al principio de
   `styles.css`.
+- **Tocar la extracción de forma**: `computePcaBasis`, `kmeans2`,
+  `computeShapeConstants` y `pigmentProbability` en `worker.js` calculan la
+  clasificación; `applyShapeProbability` y `applyShapeSilhouette` generan las
+  imágenes de salida. El controlador `ShapeExtractor` en `app.js` coordina la
+  interfaz, dibuja el mapa de calor y traza el contorno vectorial
+  (`traceContourSvg`, *marching squares*) en el propio navegador.
 
 ## Reglas de diseño
 
@@ -287,5 +332,12 @@ El método y los espacios de color provienen de la investigación de
 adaptó el estiramiento por descorrelación al arte rupestre. ArqueoStretch es una
 implementación independiente para navegador, no afiliada a DStretch.
 
+El planteamiento de la extracción de forma como probabilidad, en vez de como
+calco binario, sigue el argumento de:
+
+> Cerrillo Cuenca, E. (2024). "Las técnicas de realce digital en pinturas
+> prehistóricas. Elementos para un debate". *Cuadernos de Prehistoria y
+> Arqueología de la Universidad de Granada*, 34, 31-48.
+
 Si usas la herramienta en un trabajo publicado, cita el trabajo original de
-Harman.
+Harman y, si corresponde, el de Cerrillo Cuenca para la extracción de forma.

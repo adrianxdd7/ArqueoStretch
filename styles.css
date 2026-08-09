@@ -370,6 +370,14 @@ label:has(.visually-hidden-input:focus-visible) {
     pointer-events: none;
 }
 
+/* Mapa de calor de la extracción de forma: va encima de canvasView con la
+   misma regla de encaje (.stage__inner canvas), solo hay que sacarlo de la
+   interacción del ratón/dedo y subirlo por encima del resto de capas. */
+#shapeOverlayCanvas {
+    pointer-events: none;
+    z-index: 5;
+}
+
 /* Controles flotantes sobre la imagen */
 .stage__zoom {
     position: absolute;
@@ -1558,6 +1566,7 @@ html body.clean-screen #uploadLabel,
 html body.clean-screen #captureBtn,
 html body.clean-screen #holdViewBtn,
 html body.clean-screen .readout,
+html body.clean-screen #shapeOverlayCanvas,
 html body.clean-screen.pro-mode-active .pro-card,
 html body.clean-screen.pro-mode-active .pro-only {
     display: none !important;
