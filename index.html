@@ -125,7 +125,7 @@
                 <p class="masthead__sub">Realce de pigmento y microrrelieve en fotografía de arte rupestre</p>
             </div>
             <div class="masthead__meta">
-                <span class="version" id="versionLabel">v0.6</span>
+                <span class="version" id="versionLabel">v0.7</span>
                 <a class="repo-link" href="https://github.com/adrianxdd7/ArqueoStretch" target="_blank" rel="noopener noreferrer">
                     <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg>
                     GitHub
@@ -140,7 +140,7 @@
 
         <button class="btn btn--block" id="cleanScreenBtn" type="button">
             <svg class="icon" aria-hidden="true"><use href="#i-expand"/></svg>
-            Modo campo
+            Pantalla limpia
         </button>
 
         <div class="stage-wrap" id="imageWorkshopCard">
@@ -305,6 +305,26 @@
                         <input class="range" type="range" id="sliderWhite" min="0" max="255" value="255" aria-label="Punto blanco">
                         <span class="slider-row__value" id="valWhite">255</span>
                     </div>
+                </div>
+            </section>
+
+            <section class="panel" id="previewPanel">
+                <div class="panel__head">
+                    <span class="eyebrow">Vista previa</span>
+                    <span class="mono" id="previewActual" style="font-size:var(--t-label);color:var(--chalk-3)">—</span>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="previewQuality">Resolución de trabajo</label>
+                    <select class="select" id="previewQuality">
+                        <option value="baja">Rápida — 1,2 Mpx</option>
+                        <option value="equilibrada">Equilibrada — 2,5 Mpx</option>
+                        <option value="alta">Alta — 5 Mpx</option>
+                        <option value="maxima">Máxima — 12 Mpx</option>
+                    </select>
+                    <p class="field__hint" id="previewQualityHint">
+                        Solo afecta a lo que ves y a la velocidad de los controles. La exportación
+                        en PNG usa siempre el original completo.
+                    </p>
                 </div>
             </section>
 

@@ -3,7 +3,7 @@
  * Interfaz, pipeline de GPU y coordinación con el worker de procesamiento.
  * ========================================================================= */
 
-const APP_VERSION = "0.6";
+const APP_VERSION = "0.7";
 
 /* -------------------------------------------------------------------------
  * Caché de referencias al DOM.
@@ -292,6 +292,7 @@ const WebGL2Pipeline = {
     gl: null, program: null, texture: null, vao: null,
     uniforms: {},
     lastTextureSource: null,
+    maxTextureSize: 4096,
 
     vertexShaderSource: `#version 300 es
         in vec2 position; out vec2 vTexCoord;
@@ -377,6 +378,11 @@ const WebGL2Pipeline = {
 
         gl.deleteShader(vs);
         gl.deleteShader(fs);
+
+        // Ninguna previsualización puede superar este tamaño en ninguna de
+        // sus dos dimensiones, o la textura falla y no se dibuja nada. En
+        // móviles antiguos suele ser 4096; en equipos de sobremesa, 16384.
+        this.maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 4096;
 
         const uniformKeys = ["uResolution", "uFilterMode", "uLevels", "uFilterAmount"];
         uniformKeys.forEach(key => {
@@ -1066,6 +1072,52 @@ const RoiSelector = {
         return (this.useCheck && this.useCheck.checked && this.roi) ? this.roi : null;
     },
 
+    /**
+     * Recupera una selección tras cambiar la resolución de trabajo. Las
+     * coordenadas están en píxeles de la previsualización, así que hay que
+     * escalarlas; si no, el recuadro apuntaría a otra parte de la foto.
+     */
+    restoreScaled(roi, escala, activa, imgW, imgH) {
+        const x = Math.round(roi.x * escala);
+        const y = Math.round(roi.y * escala);
+        const w = Math.round(roi.w * escala);
+        const h = Math.round(roi.h * escala);
+        if (w < 8 || h < 8) return;
+
+        this.roi = {
+            x: Math.max(0, Math.min(imgW - 1, x)),
+            y: Math.max(0, Math.min(imgH - 1, y)),
+            w: Math.min(w, imgW - x),
+            h: Math.min(h, imgH - y)
+        };
+        this.useCheck.disabled = false;
+        this.useCheck.checked = !!activa;
+        this.redrawOverlay(imgW, imgH);
+    },
+
+    // Camino inverso a toImageCoords: de coordenadas de imagen a la caja.
+    redrawOverlay(imgW, imgH) {
+        if (!this.roi) return;
+        const rect = this.card.getBoundingClientRect();
+        if (!rect.width || !rect.height || !imgW || !imgH) return;
+
+        const imgRatio = imgW / imgH, boxRatio = rect.width / rect.height;
+        let renderW, renderH, offsetX, offsetY;
+        if (imgRatio > boxRatio) {
+            renderW = rect.width; renderH = rect.width / imgRatio;
+            offsetX = 0; offsetY = (rect.height - renderH) / 2;
+        } else {
+            renderH = rect.height; renderW = rect.height * imgRatio;
+            offsetY = 0; offsetX = (rect.width - renderW) / 2;
+        }
+
+        this.overlay.style.left = (offsetX + this.roi.x / imgW * renderW) + 'px';
+        this.overlay.style.top = (offsetY + this.roi.y / imgH * renderH) + 'px';
+        this.overlay.style.width = (this.roi.w / imgW * renderW) + 'px';
+        this.overlay.style.height = (this.roi.h / imgH * renderH) + 'px';
+        this.overlay.classList.remove('hidden');
+    },
+
     getImageElement() {
         const canvas = el('canvasView');
         return canvas.classList.contains('hidden') ? el('videoPreview') : canvas;
@@ -1622,7 +1674,53 @@ const UIController = {
     sourceSize: null,
     sourceBlob: null,
     currentConstants: null,
+    reloadingSameImage: false,
     intensityTimer: null,
+
+    QUALITY_KEY: 'arqueostretch_preview_quality',
+
+    QUALITY_LEVELS: {
+        baja:        1200000,
+        equilibrada: 2500000,
+        alta:        5000000,
+        maxima:      12000000
+    },
+
+    /**
+     * Elige un valor por defecto razonable la primera vez. No hay forma
+     * fiable de medir la potencia de un dispositivo desde el navegador, así
+     * que se combinan las pistas disponibles y se peca de prudente: siempre
+     * se puede subir a mano, y una vista lenta da peor impresión que una
+     * vista algo menos nítida.
+     */
+    detectDefaultQuality() {
+        const memoria = navigator.deviceMemory || 0;        // solo lo da Chrome
+        const nucleos = navigator.hardwareConcurrency || 0;
+        const densidad = window.devicePixelRatio || 1;
+        const esTactil = window.matchMedia('(pointer: coarse)').matches;
+
+        if (!esTactil) {
+            return (nucleos >= 8 || memoria >= 8) ? 'alta' : 'equilibrada';
+        }
+
+        // Safari no expone deviceMemory, así que en iPhone hay que juzgar por
+        // otras pistas. Una pantalla de alta densidad es buena señal: los
+        // aparatos con dpr 3 son de gama alta o media-alta reciente.
+        const modesto = (memoria > 0 && memoria < 4) || nucleos <= 2 || densidad < 2;
+        return modesto ? 'baja' : 'equilibrada';
+    },
+
+    getPreviewQuality() {
+        let guardada = null;
+        try { guardada = localStorage.getItem(this.QUALITY_KEY); } catch (err) { /* modo privado */ }
+        if (guardada && this.QUALITY_LEVELS[guardada]) return guardada;
+        return this.detectDefaultQuality();
+    },
+
+    setPreviewQuality(nivel) {
+        if (!this.QUALITY_LEVELS[nivel]) return;
+        try { localStorage.setItem(this.QUALITY_KEY, nivel); } catch (err) { /* modo privado */ }
+    },
 
     /**
      * RESOLUCIÓN DE TRABAJO
@@ -1637,7 +1735,9 @@ const UIController = {
      * histograma salen de una previsualización, y la exportación aplica las
      * matemáticas al archivo original.
      */
-    PREVIEW_MAX_PIXELS: 2500000,
+    get PREVIEW_MAX_PIXELS() {
+        return this.QUALITY_LEVELS[this.getPreviewQuality()];
+    },
 
     // La intensidad se guarda como valor efectivo del algoritmo (igual que en
     // versiones anteriores) para que los códigos ASW1 y las bibliotecas ya
@@ -1728,6 +1828,9 @@ const UIController = {
 
         // La cámara ya no se enciende sola: al arrancar no hay nada que ver,
         // así que se explica qué hacer.
+        el('previewQuality').value = this.getPreviewQuality();
+        this.updatePreviewReadout(0, 0);
+
         el('videoPreview').classList.add('hidden');
         Toast.show("Abre una imagen o usa la cámara para empezar.", "info", 0);
         this.updateStatus("Listo", "ok");
@@ -2246,6 +2349,11 @@ const UIController = {
 
         el('gpsPrecision').addEventListener('change', () => GPSManager.refreshDisplay());
 
+        el('previewQuality').addEventListener('change', (e) => {
+            this.setPreviewQuality(e.target.value);
+            this.reloadPreview();
+        });
+
         el('btnCopyGPS').addEventListener('click', async () => {
             const coords = GPSManager.getRoundedCoords();
             if (!coords) { this.updateStatus("Aún no hay coordenadas disponibles.", "warn"); return; }
@@ -2278,10 +2386,24 @@ const UIController = {
         // archivo original se conserva intacto para la exportación.
         let w = srcW, h = srcH;
         let esPrevia = false;
-        if (w * h > this.PREVIEW_MAX_PIXELS) {
-            const factor = Math.sqrt(this.PREVIEW_MAX_PIXELS / (w * h));
+        const objetivo = this.PREVIEW_MAX_PIXELS;
+
+        if (w * h > objetivo) {
+            const factor = Math.sqrt(objetivo / (w * h));
             w = Math.max(1, Math.floor(w * factor));
             h = Math.max(1, Math.floor(h * factor));
+            esPrevia = true;
+        }
+
+        // Segundo tope, por lado y no por área: la previsualización se sube a
+        // la GPU como una textura, y ninguna dimensión puede pasar del máximo
+        // que admita el aparato. Una panorámica muy alargada puede tener pocos
+        // megapíxeles y aun así ser demasiado ancha.
+        const maxLado = WebGL2Pipeline.maxTextureSize || 4096;
+        if (w > maxLado || h > maxLado) {
+            const f = Math.min(maxLado / w, maxLado / h);
+            w = Math.max(1, Math.floor(w * f));
+            h = Math.max(1, Math.floor(h * f));
             esPrevia = true;
         }
 
@@ -2291,11 +2413,17 @@ const UIController = {
         this.currentConstants = null;
         this.isHoldingOriginal = false;
 
-        // La selección anterior no vale para una imagen nueva: sus
-        // coordenadas apuntaban a otra foto.
+        // Al recargar la MISMA imagen con otra resolución de trabajo, la
+        // selección sigue siendo válida: solo hay que reescalar sus
+        // coordenadas. Al cargar una imagen distinta, se descarta.
+        const roiPrevio = (this.reloadingSameImage && RoiSelector.roi && this.currentOriginalData)
+            ? { roi: RoiSelector.roi, escala: w / this.currentOriginalData.width,
+                activa: RoiSelector.useCheck.checked }
+            : null;
+
         RoiSelector.clear(true);
         ZoomController.reset();
-        CameraController.stop();
+        if (!this.reloadingSameImage) CameraController.stop();
 
         const glCanvas = el('canvasView');
         glCanvas.width = w;
@@ -2334,8 +2462,46 @@ const UIController = {
             Toast.hide();
         }
 
+        if (roiPrevio) {
+            RoiSelector.restoreScaled(roiPrevio.roi, roiPrevio.escala, roiPrevio.activa, w, h);
+        }
+
+        this.updatePreviewReadout(w, h);
+
         if (!this.isLabMode) this.applyPresetValues(); else this.dispatchProcessing();
         bitmap.close();
+    },
+
+    updatePreviewReadout(w, h) {
+        const nodo = el('previewActual');
+        if (!nodo) return;
+        const src = this.sourceSize;
+        if (!src) { nodo.textContent = '—'; return; }
+        nodo.textContent = (w === src.width && h === src.height)
+            ? `${w} × ${h}, completa`
+            : `${w} × ${h}`;
+    },
+
+    /**
+     * Vuelve a preparar la imagen actual con otra resolución de trabajo.
+     * Se decodifica otra vez desde el archivo original, que es justo lo que
+     * se conserva para poder exportar a resolución completa.
+     */
+    async reloadPreview() {
+        if (!this.sourceBlob) {
+            this.updatePreviewReadout(0, 0);
+            return;
+        }
+        this.updateStatus("Cambiando la resolución de trabajo", "busy");
+        try {
+            const bitmap = await createImageBitmap(this.sourceBlob, { imageOrientation: 'from-image' });
+            this.reloadingSameImage = true;
+            this.loadBitmapIntoPipeline(bitmap, this.sourceBlob);
+        } catch (err) {
+            this.updateStatus("No se pudo volver a abrir la imagen con la nueva resolución.", "error");
+        } finally {
+            this.reloadingSameImage = false;
+        }
     },
 
     dispatchProcessing() {

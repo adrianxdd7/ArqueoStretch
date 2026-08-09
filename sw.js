@@ -6,7 +6,7 @@
  * vez. Así funciona sin cobertura sin quedarse anclada a una versión vieja.
  */
 
-const CACHE_NAME = 'arqueostretch-v0.6';
+const CACHE_NAME = 'arqueostretch-v0.7';
 
 const ASSETS = [
     './',

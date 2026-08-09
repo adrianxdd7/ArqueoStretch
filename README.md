@@ -1,196 +1,291 @@
 # ArqueoStretch
 
-Herramienta libre para el realce y análisis de pinturas y grabados rupestres.
-Funciona dentro del navegador: **las fotos no se suben a ningún servidor**, todo
-el procesamiento ocurre en el propio dispositivo.
+**Realce de pigmento y microrrelieve en fotografía de arte rupestre, directamente en el navegador.**
 
-Los fundamentos metodológicos y los espacios de color están basados en las
-investigaciones de Jon Harman desarrolladas en DStretch®.
+👉 **[arqueostretch.vercel.app](https://arqueostretch.vercel.app)**
+
+Herramienta libre para documentación de pinturas y grabados rupestres. Aplica
+estiramiento por descorrelación (*decorrelation stretch*) y filtros
+estructurales para hacer visibles restos de pigmento que a simple vista se
+confunden con el soporte.
+
+**Tus fotos no salen de tu dispositivo.** No hay servidor, no hay cuenta, no hay
+subida de archivos: todo el procesamiento ocurre en tu propio navegador. Se
+puede instalar y funciona sin conexión, que es lo normal en una cueva.
 
 ---
 
-## ⚠️ Importante: no funciona haciendo doble clic en el archivo
+## Índice
 
-ArqueoStretch usa un *Web Worker* (para no congelar la interfaz mientras
-calcula) y acceso a la cámara. Los navegadores **bloquean las dos cosas** en
-páginas abiertas con `file://`, es decir, abriendo `index.html` directamente
-desde el explorador de archivos.
+- [Para usarlo](#para-usarlo)
+  - [Instalarlo en el móvil](#instalarlo-en-el-móvil)
+  - [Cómo se usa](#cómo-se-usa)
+  - [Qué algoritmo elegir](#qué-algoritmo-elegir)
+  - [Resolución: qué ves y qué exportas](#resolución-qué-ves-y-qué-exportas)
+  - [Exportación y reproducibilidad](#exportación-y-reproducibilidad)
+  - [Coordenadas GPS: leer antes de compartir](#coordenadas-gps-leer-antes-de-compartir)
+- [Para modificarlo](#para-modificarlo)
+  - [Estructura del proyecto](#estructura-del-proyecto)
+  - [Levantarlo en local](#levantarlo-en-local)
+  - [Cómo funciona por dentro](#cómo-funciona-por-dentro)
+  - [Reglas de diseño](#reglas-de-diseño)
+  - [Antes de tocar nada](#antes-de-tocar-nada)
+- [Créditos y licencia](#créditos-y-licencia)
 
-Si lo haces, verás un aviso rojo explicándolo. Necesitas servirla por
-`http://` o `https://`. Tienes tres opciones:
+---
 
-### Opción 1 — GitHub Pages (recomendada)
+# Para usarlo
 
-1. Sube todos los archivos a un repositorio de GitHub.
-2. En el repositorio, ve a **Settings → Pages**.
-3. En *Source* elige la rama `main` y la carpeta `/ (root)`. Guarda.
-4. En un par de minutos tendrás la app en `https://TU-USUARIO.github.io/ArqueoStretch/`.
+## Instalarlo en el móvil
 
-Es gratis, ya va por HTTPS (necesario para la cámara y el GPS) y permite
-instalarla como aplicación en el móvil.
+Se puede usar directamente desde el navegador, pero instalarlo tiene una ventaja
+importante para trabajo de campo: **funciona sin cobertura**.
 
-### Opción 2 — Servidor local para probar cambios
+- **Android (Chrome):** menú ⋮ → *Añadir a pantalla de inicio*
+- **iPhone (Safari):** botón compartir → *Añadir a pantalla de inicio*
 
-Con Python instalado, abre una terminal en la carpeta del proyecto y ejecuta:
+La primera visita descarga la aplicación. A partir de ahí abre y funciona en
+modo avión. Cuando vuelvas a tener conexión, se actualiza sola.
+
+## Cómo se usa
+
+1. **Abre una imagen** o usa la cámara.
+2. **Elige el pigmento que buscas.** En modo simple cada preset lleva una
+   muestra del color al que se ajusta el realce: rojo óxido, rojo lavado,
+   amarillo, carbón, grabados, etc.
+3. **Dibuja una zona de cálculo** (modo profesional). Si encuadras solo la
+   pintura, el realce se ajusta a esos colores en lugar de al conjunto de la
+   roca. Suele ser la diferencia entre ver un trazo y no verlo. Los píxeles
+   quemados por el sol y los completamente negros se descartan solos.
+4. **Ajusta la intensidad** con el control deslizante, de 0 a 100 %.
+5. **Mantén pulsado «comparar»** para ver el original y volver.
+6. **Exporta.**
+
+**Pantalla limpia** oculta toda la interfaz y deja solo la imagen y la tira de
+pigmentos. Es la vista para trabajar delante del panel.
+
+## Qué algoritmo elegir
+
+El modo simple ya elige por ti. Si trabajas en modo profesional:
+
+| Algoritmo | Para qué |
+|---|---|
+| **YRE** | Rojos muy degradados. El más agresivo con la hematites lavada |
+| **YBR** | Rojos en general |
+| **YDS** | Uso general y amarillos |
+| **YBK** | Negros y carbón desvaído |
+| **LAB / LDS / LRE** | Equivalentes en espacio CIELAB. Mejor con sombras marcadas |
+| **CRGB** | Matriz fija, sin PCA. Rápido y predecible para rojos |
+| **PCA sRGB / YCbCr** | Estiramiento estándar, sin sesgo hacia un color concreto |
+| **Diferencia de gaussianas** | Grabados, piqueteados e incisiones. Ignora el color |
+| **Máscara de enfoque** | Microtextura y contornos difusos |
+
+> ⚠️ **Los colores del resultado no son reales.** El estiramiento por
+> descorrelación produce falso color: sirve para *ver* dónde hay pigmento, no
+> para determinar de qué color es. En una publicación, acompaña siempre la
+> imagen procesada del original y de los parámetros usados.
+
+## Resolución: qué ves y qué exportas
+
+Hay dos resoluciones distintas, y entender la diferencia evita malentendidos.
+
+**Lo que ves en pantalla es una previsualización.** Tu pantalla no tiene más de
+dos o tres millones de píxeles, así que procesar más para mostrarlo no aporta
+nada y sí gasta memoria y batería. El indicador bajo la imagen muestra la
+resolución del **original**.
+
+**Al exportar en PNG se usa el archivo original entero**, a resolución completa.
+Sin reducción de calidad y sin límite práctico de tamaño: hay exportaciones
+verificadas de 100 megapíxeles usando 15 MB de memoria.
+
+En el panel **Vista previa** puedes elegir la resolución de trabajo:
+
+| Nivel | Píxeles | Cuándo |
+|---|---|---|
+| Rápida | 1,2 Mpx | Móviles antiguos, o cuando los controles van lentos |
+| Equilibrada | 2,5 Mpx | Por defecto en la mayoría de móviles |
+| Alta | 5 Mpx | Ordenador, o móvil potente |
+| Máxima | 12 Mpx | Ordenador con memoria de sobra |
+
+La aplicación elige un valor razonable la primera vez según tu dispositivo, y
+recuerda el que pongas tú. **No afecta a la calidad de lo que exportas**, solo a
+la nitidez al ampliar mucho y a la fluidez de los controles.
+
+## Exportación y reproducibilidad
+
+- **PNG**: resolución completa, sin pérdidas y sin límite de tamaño. Es la
+  opción correcta para documentación.
+- **JPEG**: más ligero, pero con pérdidas y con un tope de tamaño impuesto por
+  el navegador. Si la imagen no cabe, la aplicación te avisa.
+- **Comparativa lado a lado**: original y procesada en un solo archivo.
+- **Parámetros (`.json`)**: incluye el algoritmo, la intensidad, los niveles y
+  **las constantes exactas que se aplicaron** (medias, matriz 3×3 y límites del
+  estiramiento). Con ese archivo tu resultado es reproducible píxel a píxel por
+  cualquiera, aunque cambie la versión del programa. Expórtalo siempre que el
+  material vaya a una publicación o a un informe.
+
+También puedes generar un **código de configuración** (`ASW1:…`) para pasar los
+mismos ajustes a otra persona por mensaje, y guardar configuraciones con nombre
+en tu navegador.
+
+## Coordenadas GPS: leer antes de compartir
+
+Si activas la casilla, las coordenadas se guardan **solo dentro del `.json`**,
+nunca en un servidor. Puedes elegir la precisión: exacta (~1 m), reducida
+(~100 m, por defecto) o aproximada (~1 km).
+
+> ⚠️ **La localización precisa de arte rupestre sin catalogar es información
+> sensible frente al expolio.** Para material que vaya a salir del equipo de
+> trabajo, usa precisión reducida o desactiva las coordenadas.
+
+---
+
+# Para modificarlo
+
+Es un proyecto **sin dependencias, sin compilación y sin backend**. Son archivos
+estáticos: se editan y ya está. No hay `npm install` ni `build`.
+
+## Estructura del proyecto
+
+| Archivo | Qué contiene |
+|---|---|
+| `index.html` | Estructura de la página y el juego de iconos SVG |
+| `styles.css` | Todos los estilos, con las variables de diseño al principio |
+| `app.js` | Interfaz, pipeline de GPU (WebGL2) y coordinación |
+| `worker.js` | Los cálculos: PCA, Jacobi, CIELAB, procesado por bandas y codificador PNG |
+| `sw.js` | Service worker: funcionamiento sin conexión |
+| `manifest.json` | Datos para instalarla como aplicación |
+| `favicon.svg`, `icon-*.png` | Iconos |
+
+**Los archivos van todos en la raíz del repositorio.** Si mueves `worker.js` o
+`styles.css` a subcarpetas, hay que actualizar las rutas en `app.js`,
+`index.html` y `sw.js`.
+
+## Levantarlo en local
+
+**No funciona abriendo `index.html` con doble clic.** Los navegadores bloquean
+los *web workers* y el acceso a la cámara en páginas servidas por `file://`. La
+aplicación lo detecta y te lo dice, pero conviene saberlo.
+
+Con Python instalado, desde la carpeta del proyecto:
 
 ```bash
 python3 -m http.server 8000
 ```
 
-Luego entra en `http://localhost:8000`. Para parar, `Ctrl + C`.
+Y entra en `http://localhost:8000`. Cualquier otro servidor estático vale
+igual (`npx serve`, `php -S`, la extensión Live Server de VS Code…).
 
-*(Nota: en `localhost` la cámara funciona, pero el GPS puede pedirte HTTPS
-según el navegador.)*
+### Despliegue
 
-### Opción 3 — Cualquier hosting estático
+El repositorio está conectado a Vercel: **cada cambio en `main` despliega
+automáticamente** en [arqueostretch.vercel.app](https://arqueostretch.vercel.app).
+No hay configuración de compilación porque no hace falta compilar nada.
 
-Netlify, Cloudflare Pages, Vercel o el hosting que ya uses. No hay backend ni
-base de datos: son archivos estáticos y nada más.
+Si actualizas archivos y no ves los cambios, es el service worker sirviendo la
+versión en caché. Sube `CACHE_NAME` en `sw.js` (por ejemplo de
+`arqueostretch-v0.6` a `v0.7`) para forzar la actualización.
 
----
+### Requisitos del navegador
 
-## Instalarla en el móvil (funciona sin cobertura)
+Hace falta **WebGL2**: Chrome, Firefox y Edge modernos, y Safari 15 o superior
+(iOS 15+, de 2021). Si no está disponible, la aplicación lo dice con un mensaje
+claro en vez de quedarse en negro.
 
-Una vez publicada por HTTPS, ArqueoStretch es una **PWA**: se puede instalar y
-usar sin conexión, que es lo habitual en cuevas y abrigos.
+## Cómo funciona por dentro
 
-- **Android (Chrome):** menú ⋮ → *Añadir a pantalla de inicio*.
-- **iPhone (Safari):** botón compartir → *Añadir a pantalla de inicio*.
+La idea central, y de la que salen casi todas las decisiones de arquitectura:
 
-La primera visita descarga la app; a partir de ahí abre y funciona en modo
-avión. Las actualizaciones se descargan sin más cuando hay conexión.
+> El estiramiento por descorrelación es, para cada píxel, `salida = M · (entrada − media) + media`,
+> donde `M` es una matriz 3×3 y `media` un vector, ambos calculados a partir de
+> las estadísticas de la imagen. **Una vez conocidas esas constantes, cada píxel
+> es independiente de los demás.**
 
----
+De ahí:
 
-## Archivos del proyecto
+1. **No hacen falta buffers intermedios.** Se lee un píxel, se transforma y se
+   escribe. El worker no reserva ningún array del tamaño de la imagen.
+2. **La imagen se puede procesar por bandas horizontales**, una cada vez, con
+   memoria constante. Eso es lo que permite exportar 100 Mpx sin ahogarse.
+3. **Las constantes se estiman sobre la previsualización y se reutilizan tal
+   cual en la exportación.** No es un atajo: la covarianza es una estimación
+   estadística y con dos millones de muestras el error sobre los autovectores
+   está en el orden del 0,07 %. Y reutilizarlas garantiza que el archivo
+   exportado sea exactamente lo que se vio en pantalla. Es como trabaja
+   Lightroom: la vista y el histograma salen de una previsualización, y la
+   exportación aplica las matemáticas al archivo original.
 
-| Archivo | Qué es |
-|---|---|
-| `index.html` | Estructura de la página (solo el marcado) |
-| `styles.css` | Todos los estilos |
-| `app.js` | Interfaz, pipeline de GPU (WebGL2) y coordinación |
-| `worker.js` | Los cálculos pesados: PCA, Jacobi, LAB, CRGB, procesado por bandas y codificador PNG |
-| `manifest.json` | Datos para instalarla como aplicación |
-| `sw.js` | Service worker: funcionamiento sin conexión |
-| `favicon.svg`, `icon-*.png` | Iconos: la espiral pasa de ocre a cian, que es la operación que hace la app |
+Los filtros estructurales (diferencia de gaussianas y máscara de enfoque) sí
+dependen de los píxeles vecinos, así que las bandas se leen con un margen
+vertical que se descarta después. Sus radios se escalan con la relación entre la
+previsualización y el original; si no, el efecto saldría mucho más fino en la
+exportación que en pantalla.
 
-**Los siete archivos tienen que estar en la misma carpeta.** Si mueves
-`worker.js` o `styles.css` a subcarpetas, hay que actualizar las rutas en
-`app.js`, `index.html` y `sw.js`.
+### El PNG está escrito a mano
 
----
+`worker.js` genera el PNG byte a byte: firma, `IHDR`, bloques `IDAT`
+comprimidos con `CompressionStream('deflate')`, filtro Paeth y `IEND`, con CRC32
+propio.
 
-## Requisitos del navegador
+No es por gusto. **El elemento `<canvas>` es lo que impone el techo de tamaño en
+los navegadores**: Safari en iOS estuvo casi diez años limitado a 16,7 millones
+de píxeles, y en iOS 18 subió a 67 millones. Sin canvas de por medio, ese techo
+desaparece. El JPEG no se puede escribir a mano de forma razonable (DCT,
+cuantización, Huffman), así que sigue pasando por el canvas y hereda su límite.
 
-Hace falta **WebGL2**, disponible en Chrome, Firefox y Edge modernos y en
-Safari 15 o superior (iOS 15+, 2021). En un navegador sin WebGL2 la app avisa
-con un mensaje claro en vez de quedarse en negro.
+### Dónde está cada cosa
 
----
+- **Añadir un algoritmo de color**: `spaceParams`, `forwardPixel` e
+  `inversePixel` en `worker.js`, más la lista `VALID_FILTERS` en `app.js` y la
+  opción en el `<select id="filterSelect">` de `index.html`.
+- **Añadir un preset**: `presetOrder` y `presets` en `app.js`. Cada uno lleva
+  `swatch` con el color de la muestra.
+- **Cambiar la resolución de trabajo**: `QUALITY_LEVELS` en `app.js`.
+- **Cambiar colores, tamaños o espaciado**: variables CSS al principio de
+  `styles.css`.
 
-## Sobre las coordenadas GPS
+## Reglas de diseño
 
-Si activas la casilla de coordenadas, se guardan **solo en el archivo `.json`**
-que exportes, nunca en un servidor. Puedes elegir la precisión:
+Si vas a tocar el aspecto, estas reglas están ahí por un motivo:
 
-- Exacta (~1 m)
-- Reducida (~100 m) — la opción por defecto
-- Aproximada (~1 km)
+- **El cromo es desaturado a propósito.** Una interfaz con color altera la
+  percepción del pigmento que se está analizando. Es la razón por la que
+  Lightroom y Capture One son grises. El color solo aparece donde el color es un
+  dato: las muestras de pigmento de los presets.
+- **El acento es cian, no ocre.** Un acento ocre competiría con los rojos de la
+  propia roca. El cian es el color característico de una imagen estirada por
+  descorrelación y da el máximo contraste frente al pigmento.
+- **La imagen no lleva marco.** Ni borde, ni sombra, ni esquinas redondeadas.
+- **Mayúsculas y espaciado de letras: solo en la familia monoespaciada**, que es
+  la de etiquetas y lecturas numéricas.
+- **Sin emojis.** Se dibujan distinto en cada sistema y compiten cromáticamente
+  con la foto. Los iconos son SVG de trazo 1,6 dentro del bloque `<defs>` de
+  `index.html`.
 
-**Ten cuidado al compartir.** La localización precisa de arte rupestre no
-catalogado es información sensible frente al expolio. Para publicar o enviar
-material fuera del equipo de trabajo, usa la precisión reducida o desactiva las
-coordenadas.
+## Antes de tocar nada
 
----
+Dos avisos de sitios donde es fácil romper algo sin darse cuenta:
 
-## Resolución: qué se ve y qué se exporta
+**El orden del CSS importa en las reglas de modo.** La sección 23 de
+`styles.css` (las anulaciones de pantalla limpia) va al final *a propósito*: hay
+selectores de la sección 19 con la misma especificidad y también con
+`!important`, y en un empate gana el que aparece después. Está explicado en un
+comentario ahí mismo.
 
-Hay dos resoluciones distintas y conviene entender la diferencia, porque es lo
-que permite trabajar con fotos enormes sin que la aplicación se ahogue.
-
-**Lo que ves en pantalla es una previsualización** de unos 2,5 megapíxeles. Tu
-pantalla no tiene más píxeles que eso, así que procesar más para mostrarlo no
-aportaría nada y sí gastaría memoria y tiempo. El indicador debajo de la imagen
-muestra siempre la resolución del **original**, que es la que importa.
-
-**Al exportar en PNG se usa el archivo original entero**, a resolución completa.
-No hay reducción de calidad y no hay límite práctico de tamaño: se han
-verificado exportaciones de 100 megapíxeles usando 15 MB de memoria y unos
-9 segundos de proceso.
-
-Esto funciona porque el estiramiento por descorrelación es una transformación
-afín por píxel: una vez calculada la matriz, cada píxel es independiente de los
-demás. Así que la matriz se estima sobre la previsualización —una estimación
-estadística con dos millones de muestras tiene un error del orden del 0,07 %— y
-luego se aplica al original recorriéndolo por bandas horizontales, una cada vez.
-Es exactamente como trabaja Lightroom: la vista y el histograma salen de una
-previsualización y la exportación aplica las matemáticas al archivo original.
-
-Como efecto secundario útil, el `.json` exportado incluye ahora las constantes
-exactas que se aplicaron (medias, matriz 3×3 y límites del estiramiento). Con
-ellas el resultado es reproducible píxel a píxel por cualquiera, aunque cambie
-la versión del programa.
-
-### PNG sí, JPEG con matices
-
-El PNG lo escribe la propia aplicación byte a byte, sin pasar por ningún
-elemento `<canvas>`. Eso importa porque **el canvas es lo que impone el techo de
-tamaño en los navegadores**: Safari en iOS estuvo casi diez años limitado a 16,7
-millones de píxeles y en iOS 18 subió a 67 millones. Sin canvas, ese techo
-desaparece.
-
-El JPEG no se puede escribir a mano de forma razonable, así que sigue pasando
-por el canvas y hereda su límite. Si la imagen no cabe, la aplicación te lo dice
-y te propone PNG. Para documentación arqueológica el PNG es además la opción
-correcta: sin pérdidas.
-
-### Si quieres cambiar la resolución de trabajo
-
-Está en `app.js`:
-
-```js
-PREVIEW_MAX_PIXELS: 2500000,
-```
-
-Subirlo hace la previsualización más nítida al ampliar mucho, pero más lenta al
-mover los controles. No afecta a la calidad de lo que exportas.
+**Cambiar la aritmética del worker cambia resultados ya publicados.** Las
+conversiones de `worker.js` incluyen redondeos que parecen sobrantes pero no lo
+son: mantienen la compatibilidad con los códigos de configuración y los `.json`
+exportados por versiones anteriores. Si modificas ahí, compara la salida píxel a
+píxel contra la versión previa antes de subirlo.
 
 ---
 
-## Nota de diseño
+# Créditos y licencia
 
-Si vas a cambiar el aspecto (tú o una IA), estas son las reglas del sistema. Están
-ahí por un motivo, no por gusto:
+El método y los espacios de color provienen de la investigación de
+**Jon Harman, Ph.D.**, autor de [DStretch®](https://www.dstretch.com/), que
+adaptó el estiramiento por descorrelación al arte rupestre. ArqueoStretch es una
+implementación independiente para navegador, no afiliada a DStretch.
 
-**El cromo es desaturado a propósito.** Una interfaz con color altera la percepción
-del pigmento que estás analizando. Es la razón por la que Lightroom y Capture One son
-grises. El color solo aparece donde el color es un dato: las muestras de pigmento de
-los presets.
-
-**El acento es cian, no ocre.** Un acento ocre competiría con los rojos y ocres de la
-propia roca. El cian es el color característico de una imagen estirada por
-descorrelación, y da el máximo contraste frente al pigmento, así que nunca confundes
-interfaz con imagen.
-
-**La imagen no lleva marco.** Ni borde, ni sombra, ni esquinas redondeadas. La
-separación entre imagen y controles se hace con el contraste de superficies.
-
-**Mayúsculas y espaciado de letras: solo en monoespaciada.** Es la familia de
-utilidad, para etiquetas y lecturas numéricas, como en un aparato de medida. En el
-texto normal, nunca.
-
-**Sin emojis.** Se dibujan distinto en cada sistema operativo y compiten
-cromáticamente con la foto. Los iconos son SVG de trazo 1.6 en `index.html`, dentro
-del bloque `<defs>`, y heredan el color del texto.
-
-Los valores concretos (colores, tamaños, espaciado) están al principio de
-`styles.css` como variables CSS. Cámbialos ahí y cambian en todas partes; no metas
-colores ni tamaños sueltos por el archivo.
-
----
-
-## Créditos
-
-- **Jon Harman, Ph.D.** — creador del algoritmo de *decorrelation stretch*
-  adaptado al arte rupestre (DStretch®).
+Si usas la herramienta en un trabajo publicado, cita el trabajo original de
+Harman.

@@ -955,9 +955,10 @@ label:has(.visually-hidden-input:focus-visible) {
 }
 
 /* -------------------------------------------------------------------------
-   13. MODO CAMPO
-   Pantalla completa para trabajar en el abrigo: solo la imagen y la tira
-   de pigmentos.
+   13. PANTALLA LIMPIA
+   Vista a pantalla completa para trabajar en el abrigo: solo la imagen y la
+   tira de pigmentos. Las reglas de ocultación están al final del archivo,
+   en la sección 23, por un motivo de orden que se explica allí.
    ---------------------------------------------------------------------- */
 html:has(body.clean-screen),
 body.clean-screen {
@@ -968,19 +969,6 @@ body.clean-screen {
     width: 100%;
     touch-action: none;
     padding: 0;
-}
-
-body.clean-screen .masthead,
-body.clean-screen .segmented,
-body.clean-screen .panel,
-body.clean-screen .splitter,
-body.clean-screen .divider,
-body.clean-screen #cleanScreenBtn,
-body.clean-screen #uploadLabel,
-body.clean-screen #captureBtn,
-body.clean-screen #holdViewBtn,
-body.clean-screen .readout {
-    display: none !important;
 }
 
 body.clean-screen .app {
@@ -1540,4 +1528,37 @@ body.pro-mode-active .simple-only { display: none !important; }
     opacity: 0.5;
     cursor: progress;
     pointer-events: none;
+}
+
+
+/* -------------------------------------------------------------------------
+   23. PANTALLA LIMPIA: ANULACIONES FINALES
+   
+   Este bloque va al final del archivo A PROPÓSITO, y no es un capricho de
+   organización.
+
+   La sección 19 contiene `body.pro-mode-active .pro-card { display: flex
+   !important }`. Ese selector tiene exactamente la misma especificidad que
+   `body.clean-screen .panel { display: none !important }`, y cuando dos
+   reglas empatan en especificidad y ambas llevan !important, gana la que
+   aparece después. Estando la ocultación antes, en modo profesional los
+   paneles reaparecían encima de la pantalla limpia y empujaban el visor.
+
+   Aquí van después Y con un selector más específico (`html body...`), así
+   que ganan sin depender del orden. Si algún día se reordena el archivo,
+   esto sigue funcionando.
+   ---------------------------------------------------------------------- */
+html body.clean-screen .masthead,
+html body.clean-screen .segmented,
+html body.clean-screen .panel,
+html body.clean-screen .splitter,
+html body.clean-screen .divider,
+html body.clean-screen #cleanScreenBtn,
+html body.clean-screen #uploadLabel,
+html body.clean-screen #captureBtn,
+html body.clean-screen #holdViewBtn,
+html body.clean-screen .readout,
+html body.clean-screen.pro-mode-active .pro-card,
+html body.clean-screen.pro-mode-active .pro-only {
+    display: none !important;
 }
